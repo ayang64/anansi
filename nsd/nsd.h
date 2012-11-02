@@ -556,6 +556,32 @@ typedef struct Conn {
 
 } Conn;
 
+
+/*
+ * The following structure is allocated for each connection thread.
+ * The connPtr member is used for connecting threads with the request
+ * info. The states if a conn thread are defined via enumeration.
+ */
+typedef enum {
+  connThread_free,
+  connThread_initial,
+  connThread_warmup,
+  connThread_ready,
+  connThread_idle,
+  connThread_busy,
+  connThread_dead
+} ConnThreadState;
+
+typedef struct ConnThreadArg {
+    struct ConnPool      *poolPtr;
+    struct Conn          *connPtr;
+    ConnThreadState       state;
+    uintptr_t             tid;         // not needed
+    Ns_Cond               cond;        /* Cond for signaling this conn thread */
+    Ns_Mutex              lock;
+    struct ConnThreadArg *nextPtr;     /* used for the conn thread queue */
+} ConnThreadArg;
+
 /*
  * The following structure maintains a connection thread pool.
  */
@@ -580,18 +606,14 @@ typedef struct ConnPool {
             Conn *lastPtr;
         } wait;
 
-        struct {
-            Conn *firstPtr;
-            Conn *lastPtr;
-        } active;
-
         Ns_Cond  cond;
+        Ns_Mutex lock;
         int      highwatermark;
 
-    } queue;
+    } wqueue;
 
     /*
-     * The following struct maintins the state of the threads.  Min and max
+     * The following struct maintains the state of the threads.  Min and max
      * threads are determined at startup and then NsQueueConn ensures the
      * current number of threads remains within that range with individual
      * threads waiting no more than the timeout for a connection to
@@ -609,6 +631,11 @@ typedef struct ConnPool {
         int creating;
     } threads;
 
+   struct {
+        ConnThreadArg *nextPtr;
+        ConnThreadArg *args;
+        Ns_Mutex       lock;
+   } tqueue;
 } ConnPool;
 
 /*
