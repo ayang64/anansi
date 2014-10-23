@@ -797,6 +797,7 @@ NS_EXTERN void Ns_ThreadGetThreadInfo(size_t *maxStackSize, size_t *estimatedSiz
  * time.c:
  */
 
+NS_EXTERN void Ns_GetTimeFromTcl(Ns_Time *timePtr) NS_GNUC_NONNULL(1);
 NS_EXTERN void Ns_GetTime(Ns_Time *timePtr) NS_GNUC_NONNULL(1);
 NS_EXTERN void Ns_AdjTime(Ns_Time *timePtr)  NS_GNUC_NONNULL(1);
 NS_EXTERN int  Ns_DiffTime(const Ns_Time *t1, Ns_Time *t0, Ns_Time *resultPtr)  NS_GNUC_NONNULL(1) NS_GNUC_NONNULL(2);
