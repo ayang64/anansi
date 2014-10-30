@@ -1622,10 +1622,12 @@ CreateConnThread(ConnPool *poolPtr)
 
 #if !defined(NDEBUG)
     { char *threadName = Ns_ThreadGetName();
+      /* Ns_Log(Debug, "CreateConnThread: threadName is: '%s'", threadName); */
       assert(strncmp("-driver:", threadName, 8) == 0 
 	     || strncmp("-main-", threadName, 6) == 0
 	     || strncmp("-spooler", threadName, 8) == 0
 	     || strncmp("-service-", threadName, 9) == 0
+	     || strncmp("", threadName, 1) == 0
 	     );
     }
 #endif
