@@ -195,26 +195,20 @@ struct tm *
 ns_localtime(const time_t *clock)
 {
 #ifdef _MSC_VER
-
     Tls *tlsPtr = GetTls();
     int errNum;
 
     errNum = localtime_s(&tlsPtr->ltbuf, clock);
     if (errNum != 0) {
 	NsThreadFatal("ns_localtime","localtime_s", errNum);
-     }
-
+    }
     return &tlsPtr->ltbuf;
 
 #elif defined(_WIN32)
-
     return localtime(clock);
-
 #else
-
     Tls *tlsPtr = GetTls();
     return localtime_r(clock, &tlsPtr->ltbuf);
-
 #endif
 }
 

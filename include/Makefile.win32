@@ -90,18 +90,22 @@ DLL = $(MOD:.so=)
 #
 
 !ifndef NSBUILD
+# We are linking a module against an already-installed Naviserver:
 INCDIR = $(NAVISERVER)\include
-LIBS = $(LIBS) /LIBPATH:"$(NAVISERVER)\lib" nsd.lib nsthread.lib
+LIBS = $(LIBS) /LIBPATH:"$(NAVISERVER)\lib" libnsd.lib nsthread.lib
 !else
 INCDIR = ..\include
+
+# Ok to link everything can against nsthread EXCEPT for nsthread itself:
 !if "$(DLL)" != "nsthread"
 LIBS = $(LIBS) /LIBPATH:"..\nsthread" nsthread.lib
-!if "$(DLL)" != "nsd"
-LIBS = $(LIBS) /LIBPATH:"..\nsd" nsd.lib
-!endif
-!endif
-!endif
 
+# Same sort of thing for nsd:
+!if ("$(PGM)" != "nsd" && "$(DLL)" != "nsd" && "$(DLL)" != "libnsd")
+LIBS = $(LIBS) /LIBPATH:"..\nsd" libnsd.lib
+!endif
+!endif
+!endif
 
 
 #
@@ -139,7 +143,7 @@ LIBS	= $(LIBS) tcl84t.lib
 # Common compiler and linker options.
 #
 
-COPTS	= /W3 /nologo /c
+COPTS	= /W3 /nologo /c /EHsc
 
 DEFS	= $(DEFS) /D "_WINDOWS" /D "TCL_THREADS=1" \
 		  /D "FD_SETSIZE=128" /D "_MBCS" \
@@ -147,6 +151,10 @@ DEFS	= $(DEFS) /D "_WINDOWS" /D "TCL_THREADS=1" \
 
 LOPTS   = /NOLOGO /SUBSYSTEM:CONSOLE /OPT:NOREF /OPT:NOICF
 
+# Tcl always uses _USE_32BIT_TIME_T on 32-bit Windows, so we must as well:
+!if "x86" == "$(TARGET_CPU)"
+DEFS = $(DEFS) /D _USE_32BIT_TIME_T
+!endif
 
 #
 # Variables for building a DLL module.
@@ -160,10 +168,11 @@ INSTALL = $(INSTALL) install-dll
 CLEAN	= $(CLEAN) clean-dll
 OBJS	= $(OBJS) $(WINOBJS) $(DLLOBJS) $(MODOBJS) $(LIBOBJS)
 HDRS	= $(HDRS) $(INCDIR)\ns.h $(INCDIR)\nsthread.h
+!message Library names are:  DLLBIN: $(DLLBIN)  DLLLIB: $(DLLLIB)
 
 !ifdef DLLINIT
 DLLOPTS	= /EXPORT:$(DLLINIT)
-!elseif "$(DLL)" == "nsthread" || "$(DLL)" == "nsd"
+!elseif "$(DLL)" == "nsthread" || "$(DLL)" == "nsd" || "$(DLL)" == "libnsd"
 # nsthread and nsd do NOT define Ns_ModuleInit functions.
 DLLOPTS	= 
 !else
@@ -198,11 +207,11 @@ PGMLIBS  = $(PGMLIBS) $(DLLLIB)
 #
 
 !if "$(DEBUG)" == "1"
-COPTS	= $(COPTS) /MDd /Od /Zi /RTC1
+COPTS	= $(COPTS) /MTd /Od /Zi /RTC1
 DEFS	= $(DEFS) /D "_DEBUG"
 LOPTS	= $(LOPTS) /DEBUG
 !else
-COPTS	= $(COPTS) /MD /O2
+COPTS	= $(COPTS) /MT /O2
 DEFS	= $(DEFS) /D "NDEBUG"
 !endif
 
