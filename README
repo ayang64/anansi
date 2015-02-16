@@ -70,7 +70,7 @@ Mac OS/X 10.2+ and Windows. To compile and install:
 
     $ gunzip < tcl8.5.15-src.tar.gz | tar xvf -
     $ cd tcl8.5.15/unix
-    $ ./configure --prefix=/usr/local/ns --enable-threads --enable-symbols
+    $ CFLAGS=-std=c99 ./configure --prefix=/usr/local/ns --enable-threads --enable-symbols
     $ make install
 
 
