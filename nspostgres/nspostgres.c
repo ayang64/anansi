@@ -32,7 +32,7 @@
 #include "nspostgres.h"
 #include <tcl.h>
 
-DllExport int   Ns_ModuleVersion = 1;
+DllExport int Ns_ModuleVersion = 1;
 
 static char datestyle[STRING_BUF_LEN];
 
@@ -51,64 +51,63 @@ static char datestyle[STRING_BUF_LEN];
  */
 
 void
-append_PQresultStatus(Tcl_DString *collector, const PGresult *pgResult)
+append_PQresultStatus(Tcl_DString * collector, const PGresult * pgResult)
 {
-  Tcl_DStringAppend(collector, "(Status of PQexec call: ", -1);
-  
-  if(pgResult)
-    {
-      Tcl_DStringAppend(collector, PQresStatus(PQresultStatus(pgResult)), -1);
-    }
-  else
-    {
-      Tcl_DStringAppend(collector, "none; PQexec returned null pointer", -1);
-    }
-  
-  Tcl_DStringAppend(collector, ")\n", -1);
+	Tcl_DStringAppend(collector, "(Status of PQexec call: ", -1);
+
+	if (pgResult) {
+		Tcl_DStringAppend(collector, PQresStatus(PQresultStatus(pgResult)),
+											-1);
+	} else {
+		Tcl_DStringAppend(collector, "none; PQexec returned null pointer", -1);
+	}
+
+	Tcl_DStringAppend(collector, ")\n", -1);
 }
 
 DllExport int
 Ns_DbDriverInit(char *hDriver, char *configPath)
 {
-    char *t;
-    char *e;
+	char *t;
+	char *e;
 
-    /* 
-     * Register the PostgreSQL driver functions with nsdb.
-     * Nsdb will later call the Ns_PgServerInit() function
-     * for each virtual server which utilizes nsdb. 
-     */
-    if (Ns_DbRegisterDriver(hDriver, &(PgProcs[0])) != NS_OK) {
-        Ns_Log(Error, "Ns_DbDriverInit(%s):  Could not register the %s driver.",
-               hDriver, pgName);
-        return NS_ERROR;
-    }
-    Ns_Log(Notice, "%s loaded.", pgName);
+	/* 
+	 * Register the PostgreSQL driver functions with nsdb.
+	 * Nsdb will later call the Ns_PgServerInit() function
+	 * for each virtual server which utilizes nsdb. 
+	 */
+	if (Ns_DbRegisterDriver(hDriver, &(PgProcs[0])) != NS_OK) {
+		Ns_Log(Error,
+					 "Ns_DbDriverInit(%s):  Could not register the %s driver.",
+					 hDriver, pgName);
+		return NS_ERROR;
+	}
+	Ns_Log(Notice, "%s loaded.", pgName);
 
-    e = getenv("PGDATESTYLE");
+	e = getenv("PGDATESTYLE");
 
-    t = Ns_ConfigGetValue(configPath, "DateStyle");
+	t = Ns_ConfigGetValue(configPath, "DateStyle");
 
-    strcpy(datestyle, "");
-    if (t) {
-        if (!strcasecmp(t, "ISO") || !strcasecmp(t, "SQL") ||
-            !strcasecmp(t, "POSTGRES") || !strcasecmp(t, "GERMAN") ||
-            !strcasecmp(t, "NONEURO") || !strcasecmp(t, "EURO")) {
-            strcpy(datestyle, "set datestyle to '");
-            strcat(datestyle, t);
-            strcat(datestyle, "'");
-            if (e) {
-                Ns_Log(Notice, "PGDATESTYLE overridden by datestyle param.");
-             }
-         } else {
-            Ns_Log(Error, "Illegal value for datestyle - ignored");
-          }
-     } else {
-        if (e) {
-            Ns_Log(Notice, "PGDATESTYLE setting used for datestyle.");
-         }
-       }
-    return NS_OK;
+	strcpy(datestyle, "");
+	if (t) {
+		if (!strcasecmp(t, "ISO") || !strcasecmp(t, "SQL") ||
+				!strcasecmp(t, "POSTGRES") || !strcasecmp(t, "GERMAN") ||
+				!strcasecmp(t, "NONEURO") || !strcasecmp(t, "EURO")) {
+			strcpy(datestyle, "set datestyle to '");
+			strcat(datestyle, t);
+			strcat(datestyle, "'");
+			if (e) {
+				Ns_Log(Notice, "PGDATESTYLE overridden by datestyle param.");
+			}
+		} else {
+			Ns_Log(Error, "Illegal value for datestyle - ignored");
+		}
+	} else {
+		if (e) {
+			Ns_Log(Notice, "PGDATESTYLE setting used for datestyle.");
+		}
+	}
+	return NS_OK;
 
 }
 
@@ -116,18 +115,20 @@ Ns_DbDriverInit(char *hDriver, char *configPath)
 /*
  * Ns_PgName - Return the string name which identifies the PostgreSQL driver.
  */
-static char    *
-Ns_PgName(Ns_DbHandle *ignored) {
-    return pgName;
+static char *
+Ns_PgName(Ns_DbHandle * ignored)
+{
+	return pgName;
 }
 
 
 /*
  * Ns_PgDbType - Return the string which identifies the PostgreSQL database.
  */
-static char    *
-Ns_PgDbType(Ns_DbHandle *ignored) {
-    return pgName;
+static char *
+Ns_PgDbType(Ns_DbHandle * ignored)
+{
+	return pgName;
 }
 
 /*
@@ -135,133 +136,135 @@ Ns_PgDbType(Ns_DbHandle *ignored) {
  * datasource for PostgreSQL is in the form "host:port:database".
  */
 static int
-Ns_PgOpenDb(Ns_DbHandle *handle) {
+Ns_PgOpenDb(Ns_DbHandle * handle)
+{
 
-    static char *asfuncname = "Ns_PgOpenDb";
-    NsPgConn       *nsConn;
-    PGconn         *pgConn;
-    char           *host;
-    char           *port;
-    char           *db;
-    char            datasource[STRING_BUF_LEN];
+	static char *asfuncname = "Ns_PgOpenDb";
+	NsPgConn *nsConn;
+	PGconn *pgConn;
+	char *host;
+	char *port;
+	char *db;
+	char datasource[STRING_BUF_LEN];
 
-    if (handle == NULL || handle->datasource == NULL ||
-        strlen(handle->datasource) > STRING_BUF_LEN) {
-        Ns_Log(Error, "%s: Invalid handle.", asfuncname);
-        return NS_ERROR;
-    }
-
-    strcpy(datasource, handle->datasource);
-    host = datasource;
-    port = strchr(datasource, ':');
-    if (port == NULL || ((db = strchr(port + 1, ':')) == NULL)) {
-        Ns_Log(Error, "Ns_PgOpenDb(%s):  Malformed datasource:  %s.  Proper form is: (host:port:database).",
-               handle->driver, handle->datasource);
-        return NS_ERROR;
-    } else {
-        *port++ = '\0';
-        *db++ = '\0';
-	if (!strcmp(host, "localhost")) {
-	    Ns_Log(Notice, "Opening %s on %s", db, host);
-	    pgConn = PQsetdbLogin(NULL, port, NULL, NULL, db, handle->user,
-                                  handle->password);
-	} else {
-	    Ns_Log(Notice, "Opening %s on %s, port %s", db, host, port);
-	    pgConn = PQsetdbLogin(host, port, NULL, NULL, db, handle->user,
-                             handle->password);
+	if (handle == NULL || handle->datasource == NULL ||
+			strlen(handle->datasource) > STRING_BUF_LEN) {
+		Ns_Log(Error, "%s: Invalid handle.", asfuncname);
+		return NS_ERROR;
 	}
 
-        if (PQstatus(pgConn) == CONNECTION_OK) {
-            Ns_Log(Notice, "Ns_PgOpenDb(%s):  Openned connection to %s.",
-			    handle->driver, handle->datasource);
-            nsConn = ns_malloc(sizeof(NsPgConn));
-            if (!nsConn) {
-                Ns_Log(Error, "ns_malloc() failed allocating nsConn");
-                return NS_ERROR;
-            }
-            nsConn->in_transaction = FALSE;
-            nsConn->cNum = pgCNum++;
-            nsConn->conn = pgConn;
-            nsConn->res = NULL;
-            nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
-            handle->connection = nsConn;
+	strcpy(datasource, handle->datasource);
+	host = datasource;
+	port = strchr(datasource, ':');
+	if (port == NULL || ((db = strchr(port + 1, ':')) == NULL)) {
+		Ns_Log(Error,
+					 "Ns_PgOpenDb(%s):  Malformed datasource:  %s.  Proper form is: (host:port:database).",
+					 handle->driver, handle->datasource);
+		return NS_ERROR;
+	} else {
+		*port++ = '\0';
+		*db++ = '\0';
+		if (!strcmp(host, "localhost")) {
+			Ns_Log(Notice, "Opening %s on %s", db, host);
+			pgConn = PQsetdbLogin(NULL, port, NULL, NULL, db, handle->user,
+														handle->password);
+		} else {
+			Ns_Log(Notice, "Opening %s on %s, port %s", db, host, port);
+			pgConn = PQsetdbLogin(host, port, NULL, NULL, db, handle->user,
+														handle->password);
+		}
 
-            if (strlen(datestyle)) { 
-                return Ns_PgExec(handle, datestyle) == NS_DML ?
-                  NS_OK : NS_ERROR;
-            }
-            return NS_OK;
-        } else {
-            Ns_Log(Error, "Ns_PgOpenDb(%s):  Could not connect to %s:  %s", handle->driver,
-			    handle->datasource, PQerrorMessage(pgConn));
-            PQfinish(pgConn);
-            return NS_ERROR;
-        }
-    }
+		if (PQstatus(pgConn) == CONNECTION_OK) {
+			Ns_Log(Notice, "Ns_PgOpenDb(%s):  Openned connection to %s.",
+						 handle->driver, handle->datasource);
+			nsConn = ns_malloc(sizeof (NsPgConn));
+			if (!nsConn) {
+				Ns_Log(Error, "ns_malloc() failed allocating nsConn");
+				return NS_ERROR;
+			}
+			nsConn->in_transaction = FALSE;
+			nsConn->cNum = pgCNum++;
+			nsConn->conn = pgConn;
+			nsConn->res = NULL;
+			nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
+			handle->connection = nsConn;
+
+			if (strlen(datestyle)) {
+				return Ns_PgExec(handle, datestyle) == NS_DML ? NS_OK : NS_ERROR;
+			}
+			return NS_OK;
+		} else {
+			Ns_Log(Error, "Ns_PgOpenDb(%s):  Could not connect to %s:  %s",
+						 handle->driver, handle->datasource, PQerrorMessage(pgConn));
+			PQfinish(pgConn);
+			return NS_ERROR;
+		}
+	}
 }
 
 /*
  * Ns_PgCloseDb - Close an PostgreSQL connection on an nsdb handle.
  */
 static int
-Ns_PgCloseDb(Ns_DbHandle *handle) {
+Ns_PgCloseDb(Ns_DbHandle * handle)
+{
 
-    static char    *asfuncname = "Ns_PgCloseDb";
-    NsPgConn       *nsConn;
+	static char *asfuncname = "Ns_PgCloseDb";
+	NsPgConn *nsConn;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        return NS_ERROR;
-    }
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		return NS_ERROR;
+	}
 
-    nsConn = handle->connection;
+	nsConn = handle->connection;
 
-    if (handle->verbose) {
-        Ns_Log(Notice, "Ns_PgCloseDb(%d):  Closing connection:  %s",
-               nsConn->cNum, handle->datasource);
-    }
+	if (handle->verbose) {
+		Ns_Log(Notice, "Ns_PgCloseDb(%d):  Closing connection:  %s",
+					 nsConn->cNum, handle->datasource);
+	}
 
-    PQfinish(nsConn->conn);
+	PQfinish(nsConn->conn);
 
-    /* DRB: Not sure why the driver zeroes these out before
-     * freeing nsConn, but can't hurt I guess.
-    */
-    nsConn->conn = NULL;
-    nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
-    ns_free(nsConn);
+	/* DRB: Not sure why the driver zeroes these out before
+	 * freeing nsConn, but can't hurt I guess.
+	 */
+	nsConn->conn = NULL;
+	nsConn->nCols = nsConn->nTuples = nsConn->curTuple = 0;
+	ns_free(nsConn);
 
-    handle->connection = NULL;
+	handle->connection = NULL;
 
-    return NS_OK;
+	return NS_OK;
 }
 
 static void
-Ns_PgSetErrorstate(Ns_DbHandle *handle)
+Ns_PgSetErrorstate(Ns_DbHandle * handle)
 {
-    NsPgConn  *nsConn = handle->connection;
-    Ns_DString        *nsMsg  = &(handle->dsExceptionMsg);
+	NsPgConn *nsConn = handle->connection;
+	Ns_DString *nsMsg = &(handle->dsExceptionMsg);
 
-    Ns_DStringTrunc(nsMsg, 0);
+	Ns_DStringTrunc(nsMsg, 0);
 
-    switch (PQresultStatus(nsConn->res)) {
-        case PGRES_EMPTY_QUERY:
-        case PGRES_COMMAND_OK:
-        case PGRES_TUPLES_OK:
-        case PGRES_COPY_OUT:
-        case PGRES_COPY_IN:
-        case PGRES_NONFATAL_ERROR:
-              Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
-              break;
+	switch (PQresultStatus(nsConn->res)) {
+	case PGRES_EMPTY_QUERY:
+	case PGRES_COMMAND_OK:
+	case PGRES_TUPLES_OK:
+	case PGRES_COPY_OUT:
+	case PGRES_COPY_IN:
+	case PGRES_NONFATAL_ERROR:
+		Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
+		break;
 
-        case PGRES_FATAL_ERROR:
-              Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
-              break;
+	case PGRES_FATAL_ERROR:
+		Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
+		break;
 
-        case PGRES_BAD_RESPONSE:
-              Ns_DStringAppend(nsMsg, "PGRES_BAD_RESPONSE ");
-              Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
-              break;
-    }
+	case PGRES_BAD_RESPONSE:
+		Ns_DStringAppend(nsMsg, "PGRES_BAD_RESPONSE ");
+		Ns_DStringAppend(nsMsg, PQresultErrorMessage(nsConn->res));
+		break;
+	}
 }
 
 
@@ -272,27 +275,28 @@ Ns_PgSetErrorstate(Ns_DbHandle *handle)
 */
 
 static void
-set_transaction_state(Ns_DbHandle *handle, char *sql, char *asfuncname) {
-    NsPgConn *nsConn = handle->connection;
-    while (*sql == ' ') sql++;
-    if (!strncasecmp(sql, "begin", 5)) {
-        if (handle->verbose) {
-            Ns_Log(Notice, "%s: Entering transaction", asfuncname);
-        }
-        nsConn->in_transaction = TRUE;
-    } else if (!strncasecmp(sql, "end", 3) ||
-               !strncasecmp(sql, "commit", 6)) {
-        if (handle->verbose) {
-            Ns_Log(Notice, "%s: Committing transaction", asfuncname);
-        }
-        nsConn->in_transaction = FALSE;
-    } else if (!strncasecmp(sql, "abort", 5) ||
-               !strncasecmp(sql, "rollback", 8)) {
-        if (handle->verbose) {
-            Ns_Log(Notice, "%s: Rolling back transaction", asfuncname);
-        }
-        nsConn->in_transaction = FALSE;
-    }
+set_transaction_state(Ns_DbHandle * handle, char *sql, char *asfuncname)
+{
+	NsPgConn *nsConn = handle->connection;
+	while (*sql == ' ')
+		sql++;
+	if (!strncasecmp(sql, "begin", 5)) {
+		if (handle->verbose) {
+			Ns_Log(Notice, "%s: Entering transaction", asfuncname);
+		}
+		nsConn->in_transaction = TRUE;
+	} else if (!strncasecmp(sql, "end", 3) || !strncasecmp(sql, "commit", 6)) {
+		if (handle->verbose) {
+			Ns_Log(Notice, "%s: Committing transaction", asfuncname);
+		}
+		nsConn->in_transaction = FALSE;
+	} else if (!strncasecmp(sql, "abort", 5) ||
+						 !strncasecmp(sql, "rollback", 8)) {
+		if (handle->verbose) {
+			Ns_Log(Notice, "%s: Rolling back transaction", asfuncname);
+		}
+		nsConn->in_transaction = FALSE;
+	}
 }
 
 /*
@@ -301,176 +305,178 @@ set_transaction_state(Ns_DbHandle *handle, char *sql, char *asfuncname) {
  * driver.
  */
 static int
-Ns_PgExec(Ns_DbHandle *handle, char *sql) {
-    static char *asfuncname = "Ns_PgExec";
-    NsPgConn       *nsConn;
-    Ns_DString      dsSql;
-    int             retry_count=2;
-    
-    if (sql == NULL) {
-        Ns_Log(Error, "%s: Invalid SQL query.", asfuncname);
-        return NS_ERROR;
-    }
+Ns_PgExec(Ns_DbHandle * handle, char *sql)
+{
+	static char *asfuncname = "Ns_PgExec";
+	NsPgConn *nsConn;
+	Ns_DString dsSql;
+	int retry_count = 2;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        return NS_ERROR;
-    } 
+	if (sql == NULL) {
+		Ns_Log(Error, "%s: Invalid SQL query.", asfuncname);
+		return NS_ERROR;
+	}
 
-    nsConn = handle->connection;
-       
-    PQclear(nsConn->res);
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		return NS_ERROR;
+	}
 
-    Ns_DStringInit(&dsSql);
-    Ns_DStringAppend(&dsSql, sql);
-    Ns_PgUnQuoteOidString(&dsSql);
+	nsConn = handle->connection;
 
-    while (dsSql.length > 0 && isspace(dsSql.string[dsSql.length - 1])) {
-        dsSql.string[--dsSql.length] = '\0';
-    }
+	PQclear(nsConn->res);
 
-    if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
-        Ns_DStringAppend(&dsSql, ";");
-    }
+	Ns_DStringInit(&dsSql);
+	Ns_DStringAppend(&dsSql, sql);
+	Ns_PgUnQuoteOidString(&dsSql);
 
-    if (handle->verbose) {
-	Ns_Log(Notice, "Querying '%s'", dsSql.string);
-    }
+	while (dsSql.length > 0 && isspace(dsSql.string[dsSql.length - 1])) {
+		dsSql.string[--dsSql.length] = '\0';
+	}
 
-    nsConn->res = PQexec(nsConn->conn, dsSql.string);
+	if (dsSql.length > 0 && dsSql.string[dsSql.length - 1] != ';') {
+		Ns_DStringAppend(&dsSql, ";");
+	}
 
-    /* Set error result for exception message -- not sure that this
-       belongs here in DRB-improved driver..... but, here it is
-       anyway, as it can't really hurt anything :-) */
-   
-    Ns_PgSetErrorstate(handle);
+	if (handle->verbose) {
+		Ns_Log(Notice, "Querying '%s'", dsSql.string);
+	}
 
-    /* This loop should actually be safe enough, but we'll take no 
-     * chances and guard against infinite retries with a counter.
-     */
+	nsConn->res = PQexec(nsConn->conn, dsSql.string);
 
-    while (PQstatus(nsConn->conn) == CONNECTION_BAD && retry_count--) {
+	/* Set error result for exception message -- not sure that this
+	   belongs here in DRB-improved driver..... but, here it is
+	   anyway, as it can't really hurt anything :-) */
 
-        int in_transaction = nsConn->in_transaction;
+	Ns_PgSetErrorstate(handle);
 
-        /* Backend returns a fatal error if it really crashed.  After a crash,
-         * all other backends close with a non-fatal error because shared
-         * memory might've been corrupted by the crash.  In this case, we
-         * will retry the query.
-         */
+	/* This loop should actually be safe enough, but we'll take no 
+	 * chances and guard against infinite retries with a counter.
+	 */
 
-        int retry_query = PQresultStatus(nsConn->res) == PGRES_NONFATAL_ERROR;
-        
-        /* Reconnect messages need to be logged regardless of Verbose. */    
+	while (PQstatus(nsConn->conn) == CONNECTION_BAD && retry_count--) {
 
-        Ns_Log(Notice, "%s: Trying to reopen database connection", asfuncname);
+		int in_transaction = nsConn->in_transaction;
 
-        PQfinish(nsConn->conn);
+		/* Backend returns a fatal error if it really crashed.  After a crash,
+		 * all other backends close with a non-fatal error because shared
+		 * memory might've been corrupted by the crash.  In this case, we
+		 * will retry the query.
+		 */
 
-        /* We'll kick out with an NS_ERROR if we're in a transaction.
-         * The queries within the transaction up to this point were
-         * rolled back when the transaction crashed or closed itself
-         * at the request of the postmaster.  If we were to allow the
-         * rest of the transaction to continue, you'd blow transaction
-         * semantics, i.e. the first portion of the transaction would've
-         * rolled back and the rest of the transaction would finish its
-         * inserts or whatever.  Not good!   So we return an error.  If
-         * the programmer's catching transaction errors and rolling back
-         * properly, there will be no problem - the rollback will be
-         * flagged as occuring outside a transaction but there's no
-         * harm in that.
-         *
-         * If the programmer's started a transaction with no "catch",
-         * you'll find no sympathy on my part.
-         */
+		int retry_query = PQresultStatus(nsConn->res) == PGRES_NONFATAL_ERROR;
 
-        if (Ns_PgOpenDb(handle) == NS_ERROR || in_transaction || !retry_query) {
-            if (in_transaction) {
-                Ns_Log(Notice, "%s: In transaction, conn died, error returned",
-                       asfuncname);
-            }
-            Ns_DStringFree(&dsSql);
-            return NS_ERROR;
-        }
+		/* Reconnect messages need to be logged regardless of Verbose. */
 
-        nsConn = handle->connection;
+		Ns_Log(Notice, "%s: Trying to reopen database connection", asfuncname);
 
-        Ns_Log(Notice, "%s: Retrying query", asfuncname);
-        PQclear(nsConn->res);
-        nsConn->res = PQexec(nsConn->conn, dsSql.string);
+		PQfinish(nsConn->conn);
 
-        /* This may again break the connection for two reasons: 
-         * our query may be a back-end crashing query or another
-         * backend may've crashed after we reopened the backend.
-         * Neither's at all likely but we'll loop back and try
-         * a couple of times if it does.
-         */
+		/* We'll kick out with an NS_ERROR if we're in a transaction.
+		 * The queries within the transaction up to this point were
+		 * rolled back when the transaction crashed or closed itself
+		 * at the request of the postmaster.  If we were to allow the
+		 * rest of the transaction to continue, you'd blow transaction
+		 * semantics, i.e. the first portion of the transaction would've
+		 * rolled back and the rest of the transaction would finish its
+		 * inserts or whatever.  Not good!   So we return an error.  If
+		 * the programmer's catching transaction errors and rolling back
+		 * properly, there will be no problem - the rollback will be
+		 * flagged as occuring outside a transaction but there's no
+		 * harm in that.
+		 *
+		 * If the programmer's started a transaction with no "catch",
+		 * you'll find no sympathy on my part.
+		 */
 
-    }
+		if (Ns_PgOpenDb(handle) == NS_ERROR || in_transaction || !retry_query) {
+			if (in_transaction) {
+				Ns_Log(Notice, "%s: In transaction, conn died, error returned",
+							 asfuncname);
+			}
+			Ns_DStringFree(&dsSql);
+			return NS_ERROR;
+		}
 
-    Ns_DStringFree(&dsSql);
+		nsConn = handle->connection;
 
-    if (nsConn->res == NULL) {
-        Ns_Log(Error, "Ns_PgExec(%s):  Could not send query '%s':  %s",
-	       handle->datasource, sql, PQerrorMessage(nsConn->conn));
-        return NS_ERROR;
-    }
+		Ns_Log(Notice, "%s: Retrying query", asfuncname);
+		PQclear(nsConn->res);
+		nsConn->res = PQexec(nsConn->conn, dsSql.string);
 
-    /* DRB: let's clean up nsConn a bit, if someone didn't read all
-     * the rows returned by a query, did a dml query, then a getrow
-     * the driver might get confused if we don't zap nCols and
-     * curTuple.
-    */
-    nsConn->nCols=0;
-    nsConn->curTuple=0;
-    nsConn->nTuples=0;
+		/* This may again break the connection for two reasons: 
+		 * our query may be a back-end crashing query or another
+		 * backend may've crashed after we reopened the backend.
+		 * Neither's at all likely but we'll loop back and try
+		 * a couple of times if it does.
+		 */
 
-    switch(PQresultStatus(nsConn->res)) {
-    case PGRES_TUPLES_OK:
-        handle->fetchingRows = NS_TRUE;
-        return NS_ROWS;
-        break;
-    case PGRES_COPY_IN:
-    case PGRES_COPY_OUT:
-        return NS_DML;
-        break;
-    case PGRES_COMMAND_OK:
-        set_transaction_state(handle, sql, asfuncname);
-        sscanf(PQcmdTuples(nsConn->res), "%d", &(nsConn->nTuples));
-        return NS_DML;
-        break;
-    default:
-	Ns_Log(Error, "%s: result status: %d message: %s", asfuncname,
-               PQresultStatus(nsConn->res), PQerrorMessage(nsConn->conn));
-	Ns_DbSetException(handle,"ERROR",PQerrorMessage(nsConn->conn));
-        return NS_ERROR;
-    }
+	}
 
-} /* end Ns_PgExec */
+	Ns_DStringFree(&dsSql);
+
+	if (nsConn->res == NULL) {
+		Ns_Log(Error, "Ns_PgExec(%s):  Could not send query '%s':  %s",
+					 handle->datasource, sql, PQerrorMessage(nsConn->conn));
+		return NS_ERROR;
+	}
+
+	/* DRB: let's clean up nsConn a bit, if someone didn't read all
+	 * the rows returned by a query, did a dml query, then a getrow
+	 * the driver might get confused if we don't zap nCols and
+	 * curTuple.
+	 */
+	nsConn->nCols = 0;
+	nsConn->curTuple = 0;
+	nsConn->nTuples = 0;
+
+	switch (PQresultStatus(nsConn->res)) {
+	case PGRES_TUPLES_OK:
+		handle->fetchingRows = NS_TRUE;
+		return NS_ROWS;
+		break;
+	case PGRES_COPY_IN:
+	case PGRES_COPY_OUT:
+		return NS_DML;
+		break;
+	case PGRES_COMMAND_OK:
+		set_transaction_state(handle, sql, asfuncname);
+		sscanf(PQcmdTuples(nsConn->res), "%d", &(nsConn->nTuples));
+		return NS_DML;
+		break;
+	default:
+		Ns_Log(Error, "%s: result status: %d message: %s", asfuncname,
+					 PQresultStatus(nsConn->res), PQerrorMessage(nsConn->conn));
+		Ns_DbSetException(handle, "ERROR", PQerrorMessage(nsConn->conn));
+		return NS_ERROR;
+	}
+
+}																/* end Ns_PgExec */
 
 
 static int
-Ns_PgResetHandle(Ns_DbHandle *handle) {
-    static char *asfuncname = "Ns_PgResetHandle";
-    NsPgConn       *nsConn;
+Ns_PgResetHandle(Ns_DbHandle * handle)
+{
+	static char *asfuncname = "Ns_PgResetHandle";
+	NsPgConn *nsConn;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        return NS_ERROR;
-    } 
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		return NS_ERROR;
+	}
 
-    nsConn = handle->connection;
+	nsConn = handle->connection;
 
-    if (nsConn->in_transaction) {
-        if (handle->verbose) {
-            Ns_Log(Notice, "%s: Rolling back transaction", asfuncname);
-        }
-        if (Ns_PgExec(handle, "rollback") != PGRES_COMMAND_OK) {
-            Ns_Log(Error, "%s: Rollback failed", asfuncname);
-        }
-        return NS_ERROR;
-    }
-    return NS_OK;
+	if (nsConn->in_transaction) {
+		if (handle->verbose) {
+			Ns_Log(Notice, "%s: Rolling back transaction", asfuncname);
+		}
+		if (Ns_PgExec(handle, "rollback") != PGRES_COMMAND_OK) {
+			Ns_Log(Error, "%s: Rollback failed", asfuncname);
+		}
+		return NS_ERROR;
+	}
+	return NS_OK;
 }
 
 /* EXCISE for PLAIN AS3 */
@@ -485,126 +491,127 @@ Ns_PgResetHandle(Ns_DbHandle *handle) {
  * ns_column and ns_table uses it.
  */
 
-static Ns_Set  *
-Ns_PgSelect(Ns_DbHandle *handle, char *sql) {
+static Ns_Set *
+Ns_PgSelect(Ns_DbHandle * handle, char *sql)
+{
 
-    static char *asfuncname = "Ns_PgSelect";
-    Ns_Set         *row = NULL;
-    NsPgConn       *nspgConn;
-    int             i;
+	static char *asfuncname = "Ns_PgSelect";
+	Ns_Set *row = NULL;
+	NsPgConn *nspgConn;
+	int i;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        goto done;
-    } 
-
-    if (sql == NULL) {
-        Ns_Log(Error, "%s: Invalid SQL query.", asfuncname);
-        goto done;
-    }
-
-    nspgConn = handle->connection;
-
-    if (Ns_PgExec(handle, sql) != NS_ERROR) {
-
-        if (PQresultStatus(nspgConn->res) == PGRES_TUPLES_OK) {
-            nspgConn->curTuple = 0;
-            nspgConn->nCols = PQnfields(nspgConn->res);
-            nspgConn->nTuples = PQntuples(nspgConn->res);
-            row = handle->row;
-            
-            for (i = 0; i < nspgConn->nCols; i++) {
-                Ns_SetPut(row, (char *)PQfname(nspgConn->res, i), NULL);
-            }
-            
-        } else {
-	  Tcl_DString errString;
-	  Tcl_DStringInit(&errString);
-
-	  Tcl_DStringAppend(&errString, "\nNs_PgSelect(", -1);
-	  Tcl_DStringAppend(&errString, handle->datasource, -1);
-	  Tcl_DStringAppend(&errString, "):  Query did not return rows\n", -1);
-
-	  if(handle->verbose)
-	    {
-	      append_PQresultStatus(&errString, nspgConn->res);
-
-	      Tcl_DStringAppend(&errString, "SQL:  ", -1);
-	      Tcl_DStringAppend(&errString, sql, -1);
-	    }
-
-	  Ns_Log(Error, "%s", Tcl_DStringValue(&errString));
-
-	  Tcl_DStringFree(&errString);
-        }
-    } else {
-      // Ns_PgExec returned NS_ERROR
-
-      Tcl_DString errString;
-      Tcl_DStringInit(&errString);
-      
-      Tcl_DStringAppend(&errString, "\nNs_PgSelect(", -1);
-      Tcl_DStringAppend(&errString, handle->datasource, -1);
-      Tcl_DStringAppend(&errString, "):  Ns_PgExec returned NS_ERROR\n", -1);
-      
-      if(handle->verbose)
-	{
-	  append_PQresultStatus(&errString, nspgConn->res);
-	  
-	  Tcl_DStringAppend(&errString, "SQL:  ", -1);
-	  Tcl_DStringAppend(&errString, sql, -1);
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		goto done;
 	}
-      
-      Ns_Log(Error, "%s", Tcl_DStringValue(&errString));
-    }
-  done:
-    return (row);
+
+	if (sql == NULL) {
+		Ns_Log(Error, "%s: Invalid SQL query.", asfuncname);
+		goto done;
+	}
+
+	nspgConn = handle->connection;
+
+	if (Ns_PgExec(handle, sql) != NS_ERROR) {
+
+		if (PQresultStatus(nspgConn->res) == PGRES_TUPLES_OK) {
+			nspgConn->curTuple = 0;
+			nspgConn->nCols = PQnfields(nspgConn->res);
+			nspgConn->nTuples = PQntuples(nspgConn->res);
+			row = handle->row;
+
+			for (i = 0; i < nspgConn->nCols; i++) {
+				Ns_SetPut(row, (char *) PQfname(nspgConn->res, i), NULL);
+			}
+
+		} else {
+			Tcl_DString errString;
+			Tcl_DStringInit(&errString);
+
+			Tcl_DStringAppend(&errString, "\nNs_PgSelect(", -1);
+			Tcl_DStringAppend(&errString, handle->datasource, -1);
+			Tcl_DStringAppend(&errString, "):  Query did not return rows\n", -1);
+
+			if (handle->verbose) {
+				append_PQresultStatus(&errString, nspgConn->res);
+
+				Tcl_DStringAppend(&errString, "SQL:  ", -1);
+				Tcl_DStringAppend(&errString, sql, -1);
+			}
+
+			Ns_Log(Error, "%s", Tcl_DStringValue(&errString));
+
+			Tcl_DStringFree(&errString);
+		}
+	} else {
+		// Ns_PgExec returned NS_ERROR
+
+		Tcl_DString errString;
+		Tcl_DStringInit(&errString);
+
+		Tcl_DStringAppend(&errString, "\nNs_PgSelect(", -1);
+		Tcl_DStringAppend(&errString, handle->datasource, -1);
+		Tcl_DStringAppend(&errString, "):  Ns_PgExec returned NS_ERROR\n", -1);
+
+		if (handle->verbose) {
+			append_PQresultStatus(&errString, nspgConn->res);
+
+			Tcl_DStringAppend(&errString, "SQL:  ", -1);
+			Tcl_DStringAppend(&errString, sql, -1);
+		}
+
+		Ns_Log(Error, "%s", Tcl_DStringValue(&errString));
+	}
+done:
+	return (row);
 }
 
-#endif /*NOT_AS3_PLAIN */
+#endif													/*NOT_AS3_PLAIN */
 
 /*
  * Ns_PgGetRow - Fetch rows after an Ns_PgSelect or Ns_PgExec.
  */
 static int
-Ns_PgGetRow(Ns_DbHandle *handle, Ns_Set *row) {
+Ns_PgGetRow(Ns_DbHandle * handle, Ns_Set * row)
+{
 
-    static char    *asfuncname = "Ns_PgGetRow";
-    NsPgConn       *nspgConn;
-    int             i;
+	static char *asfuncname = "Ns_PgGetRow";
+	NsPgConn *nspgConn;
+	int i;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        return NS_ERROR;
-    } 
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		return NS_ERROR;
+	}
 
-    if (row == NULL) {
-        Ns_Log(Error, "%s: Invalid Ns_Set -> row.", asfuncname);
-        return NS_ERROR;
-    }
+	if (row == NULL) {
+		Ns_Log(Error, "%s: Invalid Ns_Set -> row.", asfuncname);
+		return NS_ERROR;
+	}
 
-    nspgConn = handle->connection;
+	nspgConn = handle->connection;
 
-    if (nspgConn->nCols == 0) {
-        Ns_Log(Error, "Ns_PgGetRow(%s):  Get row called outside a fetch row loop.",
-               handle->datasource);
-        return NS_ERROR;
-    } else if (nspgConn->curTuple == nspgConn->nTuples) {
+	if (nspgConn->nCols == 0) {
+		Ns_Log(Error,
+					 "Ns_PgGetRow(%s):  Get row called outside a fetch row loop.",
+					 handle->datasource);
+		return NS_ERROR;
+	} else if (nspgConn->curTuple == nspgConn->nTuples) {
 
-        PQclear(nspgConn->res);
-        nspgConn->res = NULL;
-        nspgConn->nCols = nspgConn->nTuples = nspgConn->curTuple = 0;
-        return NS_END_DATA;
+		PQclear(nspgConn->res);
+		nspgConn->res = NULL;
+		nspgConn->nCols = nspgConn->nTuples = nspgConn->curTuple = 0;
+		return NS_END_DATA;
 
-    } else {
-        for (i = 0; i < nspgConn->nCols; i++) {
-            Ns_SetPutValue(row, i, (char *) PQgetvalue(nspgConn->res,
-				 nspgConn->curTuple, i));
-        }
-        nspgConn->curTuple++;
-    }
+	} else {
+		for (i = 0; i < nspgConn->nCols; i++) {
+			Ns_SetPutValue(row, i, (char *) PQgetvalue(nspgConn->res,
+																								 nspgConn->curTuple, i));
+		}
+		nspgConn->curTuple++;
+	}
 
-    return NS_OK;
+	return NS_OK;
 }
 
 
@@ -612,24 +619,25 @@ Ns_PgGetRow(Ns_DbHandle *handle, Ns_Set *row) {
  * Ns_PgFlush - Flush any waiting rows not needed after an Ns_DbSelect().
  */
 static int
-Ns_PgFlush(Ns_DbHandle *handle) {
+Ns_PgFlush(Ns_DbHandle * handle)
+{
 
-    static char *asfuncname = "Ns_PgFlush";
-    NsPgConn   *nspgConn;
+	static char *asfuncname = "Ns_PgFlush";
+	NsPgConn *nspgConn;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        return NS_ERROR;
-    } 
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		return NS_ERROR;
+	}
 
-    nspgConn = handle->connection;
+	nspgConn = handle->connection;
 
-    if (nspgConn->nCols > 0) {
-        PQclear(nspgConn->res);
-        nspgConn->res = NULL;
-        nspgConn->nCols = nspgConn->nTuples = nspgConn->curTuple = 0;
-    }
-    return NS_OK;
+	if (nspgConn->nCols > 0) {
+		PQclear(nspgConn->res);
+		nspgConn->res = NULL;
+		nspgConn->nCols = nspgConn->nTuples = nspgConn->curTuple = 0;
+	}
+	return NS_OK;
 }
 
 /* Not needed for a PLAIN AS3 driver */
@@ -640,121 +648,125 @@ Ns_PgFlush(Ns_DbHandle *handle) {
  * about a table.
  */
 static Ns_DbTableInfo *
-Ns_PgGetTableInfo(Ns_DbHandle *handle, char *table) {
-    static char *asfuncname = "Ns_PgGetTableInfo";
-    Ns_Set         *row;
-    Ns_Set         *col;
-    Ns_DString      ds;
-    Ns_DbTableInfo *tinfo = NULL;
-    int             status;
-    char           *name;
-    char           *type;
+Ns_PgGetTableInfo(Ns_DbHandle * handle, char *table)
+{
+	static char *asfuncname = "Ns_PgGetTableInfo";
+	Ns_Set *row;
+	Ns_Set *col;
+	Ns_DString ds;
+	Ns_DbTableInfo *tinfo = NULL;
+	int status;
+	char *name;
+	char *type;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        goto done;
-    } 
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		goto done;
+	}
 
-    if (table == NULL) {
-        Ns_Log(Error, "%s: Invalid table.", asfuncname);
-        goto done;
-    }
+	if (table == NULL) {
+		Ns_Log(Error, "%s: Invalid table.", asfuncname);
+		goto done;
+	}
 
-    Ns_DStringInit(&ds);
-    Ns_DStringVarAppend(&ds, "SELECT a.attname, t.typname "
-                        "FROM pg_class c, pg_attribute a, pg_type t "
-                        "WHERE c.relname = lower('", table, "') "
-                        "and a.attnum > 0 and a.attrelid = c.oid "
-                        "and a.atttypid = t.oid ORDER BY attname", NULL);
+	Ns_DStringInit(&ds);
+	Ns_DStringVarAppend(&ds, "SELECT a.attname, t.typname "
+											"FROM pg_class c, pg_attribute a, pg_type t "
+											"WHERE c.relname = lower('", table, "') "
+											"and a.attnum > 0 and a.attrelid = c.oid "
+											"and a.atttypid = t.oid ORDER BY attname", NULL);
 
-    row = Ns_PgSelect(handle, ds.string);
-    Ns_DStringFree(&ds);
+	row = Ns_PgSelect(handle, ds.string);
+	Ns_DStringFree(&ds);
 
-    if (row != NULL) {
-        while ((status = Ns_PgGetRow(handle, row)) == NS_OK) {
-            name = row->fields[0].value;
-            type = row->fields[1].value;
-            if (name == NULL || type == NULL) {
-                Ns_Log(Error, "Ns_PgGetTableInfo(%s):  Invalid 'pg_attribute' entry for table:  %s",
-                       handle->datasource, table);
-                break;
-            }
+	if (row != NULL) {
+		while ((status = Ns_PgGetRow(handle, row)) == NS_OK) {
+			name = row->fields[0].value;
+			type = row->fields[1].value;
+			if (name == NULL || type == NULL) {
+				Ns_Log(Error,
+							 "Ns_PgGetTableInfo(%s):  Invalid 'pg_attribute' entry for table:  %s",
+							 handle->datasource, table);
+				break;
+			}
 
-            /*
-             * NB:  Move the fields directly from the row
-             * Ns_Set to the col Ns_Set to avoid a data copy.
-             */
-            col = Ns_SetCreate(NULL);
-            col->name = name;
-            Ns_SetPut(col, "type", NULL);
-            col->fields[0].value = type;
-            row->fields[0].value = NULL;
-            row->fields[1].value = NULL;
-            if (tinfo == NULL) {
-                tinfo = Ns_DbNewTableInfo(table);
-            }
-            Ns_DbAddColumnInfo(tinfo, col);
-        }
-        if (status != NS_END_DATA && tinfo != NULL) {
-            Ns_DbFreeTableInfo(tinfo);
-            tinfo = NULL;
-        }
-    }
-  done:
-    return (tinfo);
+			/*
+			 * NB:  Move the fields directly from the row
+			 * Ns_Set to the col Ns_Set to avoid a data copy.
+			 */
+			col = Ns_SetCreate(NULL);
+			col->name = name;
+			Ns_SetPut(col, "type", NULL);
+			col->fields[0].value = type;
+			row->fields[0].value = NULL;
+			row->fields[1].value = NULL;
+			if (tinfo == NULL) {
+				tinfo = Ns_DbNewTableInfo(table);
+			}
+			Ns_DbAddColumnInfo(tinfo, col);
+		}
+		if (status != NS_END_DATA && tinfo != NULL) {
+			Ns_DbFreeTableInfo(tinfo);
+			tinfo = NULL;
+		}
+	}
+done:
+	return (tinfo);
 }
 
 /*
  * Ns_PgTableList - Return a list of tables in the database.
- */ 
-static char    *
-Ns_PgTableList(Ns_DString *pds, Ns_DbHandle *handle, int fSystemTables) {
+ */
+static char *
+Ns_PgTableList(Ns_DString * pds, Ns_DbHandle * handle, int fSystemTables)
+{
 
-    static char *asfuncname = "Ns_PgTableList";
-    Ns_Set         *row;
-    Ns_DString      ds;
-    char           *table;
-    int             status = NS_ERROR;
+	static char *asfuncname = "Ns_PgTableList";
+	Ns_Set *row;
+	Ns_DString ds;
+	char *table;
+	int status = NS_ERROR;
 
-    if (pds == NULL) {
-        Ns_Log(Error, "%s: Invalid Ns_DString -> pds.", asfuncname);
-        goto done;
-    }
+	if (pds == NULL) {
+		Ns_Log(Error, "%s: Invalid Ns_DString -> pds.", asfuncname);
+		goto done;
+	}
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        goto done;
-    }   
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		goto done;
+	}
 
-    Ns_DStringInit(&ds);
-    Ns_DStringAppend(&ds, "SELECT relname FROM pg_class "
-                     "WHERE relkind = 'r' and relname !~ '^Inv' ");
-    if (!fSystemTables) {
-        Ns_DStringAppend(&ds, "and relname !~ '^pg_' ");
-    }
-    Ns_DStringAppend(&ds, "ORDER BY relname");
-    row = Ns_PgSelect(handle, ds.string);
-    Ns_DStringFree(&ds);
+	Ns_DStringInit(&ds);
+	Ns_DStringAppend(&ds, "SELECT relname FROM pg_class "
+									 "WHERE relkind = 'r' and relname !~ '^Inv' ");
+	if (!fSystemTables) {
+		Ns_DStringAppend(&ds, "and relname !~ '^pg_' ");
+	}
+	Ns_DStringAppend(&ds, "ORDER BY relname");
+	row = Ns_PgSelect(handle, ds.string);
+	Ns_DStringFree(&ds);
 
-    if (row != NULL) {
-        while ((status = Ns_DbGetRow(handle, row)) == NS_OK) {
-            table = row->fields[0].value;
-            if (table == NULL) {
-                Ns_Log(Warning, "Ns_PgTableList(%s):  NULL relname in 'pg_class' table.",
-                       handle->datasource);
-            } else {
-                Ns_DStringNAppend(pds, table, strlen(table) + 1);
-            }
-        }
-    }
-    if (status == NS_END_DATA) {
-        return (pds->string);
-    }
-  done:
-    return (NULL);
+	if (row != NULL) {
+		while ((status = Ns_DbGetRow(handle, row)) == NS_OK) {
+			table = row->fields[0].value;
+			if (table == NULL) {
+				Ns_Log(Warning,
+							 "Ns_PgTableList(%s):  NULL relname in 'pg_class' table.",
+							 handle->datasource);
+			} else {
+				Ns_DStringNAppend(pds, table, strlen(table) + 1);
+			}
+		}
+	}
+	if (status == NS_END_DATA) {
+		return (pds->string);
+	}
+done:
+	return (NULL);
 }
 
-#endif /*NOT_AS3_PLAIN */
+#endif													/*NOT_AS3_PLAIN */
 
 /* Excise for AOLserver 3*/
 #ifndef NS_AOLSERVER_3_PLUS
@@ -765,19 +777,20 @@ Ns_PgTableList(Ns_DString *pds, Ns_DbHandle *handle, int fSystemTables) {
  * unique so we just return it instead of looking for an actual
  * primary key.
  */
-static char    *
-Ns_PgBestRowId(Ns_DString *pds, Ns_DbHandle *handle, char *table) {
-    static char *asfuncname = "Ns_PgBestRowId";
-    if (pds == NULL) {
-        Ns_Log(Error, "%s: Invalid Ns_DString -> pds.", asfuncname);
-        return (NULL);
-    }
-    Ns_DStringNAppend(pds, "oid", 4);
-    return (pds->string);
+static char *
+Ns_PgBestRowId(Ns_DString * pds, Ns_DbHandle * handle, char *table)
+{
+	static char *asfuncname = "Ns_PgBestRowId";
+	if (pds == NULL) {
+		Ns_Log(Error, "%s: Invalid Ns_DString -> pds.", asfuncname);
+		return (NULL);
+	}
+	Ns_DStringNAppend(pds, "oid", 4);
+	return (pds->string);
 }
 
 /* end of extended table info stuff */
-#endif /* NS_AOLSERVER_3_PLUS */
+#endif													/* NS_AOLSERVER_3_PLUS */
 
 /* ACS BLOBing stuff */
 #ifdef FOR_ACS_USE
@@ -804,14 +817,15 @@ static unsigned char
 enc_one(unsigned char c)
 {
 	c = ENC(c);
-	if (c == '\'') c = 'a';
-	else if (c == '\\') c = 'b';
+	if (c == '\'')
+		c = 'a';
+	else if (c == '\\')
+		c = 'b';
 	return c;
 }
 
 static void
 encode3(unsigned char *p, char *buf)
-
 {
 	*buf++ = enc_one(*p >> 2);
 	*buf++ = enc_one(((*p << 4) & 060) | ((p[1] >> 4) & 017));
@@ -826,8 +840,10 @@ encode3(unsigned char *p, char *buf)
 static unsigned char
 get_one(unsigned char c)
 {
-	if (c == 'a') return '\'';
-	else if (c == 'b') return '\\';
+	if (c == 'a')
+		return '\'';
+	else if (c == 'b')
+		return '\\';
 	return c;
 }
 
@@ -854,13 +870,13 @@ decode3(unsigned char *p, char *buf, int n)
  */
 
 static int
-blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
+blob_get(Tcl_Interp * interp, Ns_DbHandle * handle, char *lob_id)
 {
-    NsPgConn	*nspgConn = (NsPgConn *) handle->connection;
-	int			segment;
-	char		query[100];
-	char		*segment_pos;
-	int			nbytes = 0;
+	NsPgConn *nspgConn = (NsPgConn *) handle->connection;
+	int segment;
+	char query[100];
+	char *segment_pos;
+	int nbytes = 0;
 
 	segment = 1;
 
@@ -871,49 +887,49 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
 	segment_pos = query + strlen(query);
 
 	for (;;) {
-		char	*data_column;
-		char	*byte_len_column;
-		int		i, j, n, byte_len;
-		char	buf[6001];
+		char *data_column;
+		char *byte_len_column;
+		int i, j, n, byte_len;
+		char buf[6001];
 
 		sprintf(segment_pos, "%d", segment);
 
 		if (Ns_PgExec(handle, query) != NS_ROWS) {
-		  Tcl_DString errString;
-		  Tcl_DStringInit(&errString);
-		  
-		  Tcl_DStringAppend
-		    (&errString, "Error selecting data from BLOB\n", -1);
-		  
-		  if(handle->verbose)
-		    {
-		      append_PQresultStatus(&errString, nspgConn->res);
-		      
-		      Tcl_DStringAppend(&errString, "SQL:  ", -1);
-		      Tcl_DStringAppend(&errString, query, -1);
-		    }
+			Tcl_DString errString;
+			Tcl_DStringInit(&errString);
 
-		  Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
-		  
-		  Tcl_DStringFree(&errString);
-		  
-		  return TCL_ERROR;
+			Tcl_DStringAppend
+					(&errString, "Error selecting data from BLOB\n", -1);
+
+			if (handle->verbose) {
+				append_PQresultStatus(&errString, nspgConn->res);
+
+				Tcl_DStringAppend(&errString, "SQL:  ", -1);
+				Tcl_DStringAppend(&errString, query, -1);
+			}
+
+			Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
+
+			Tcl_DStringFree(&errString);
+
+			return TCL_ERROR;
 		}
 
-		if (PQntuples(nspgConn->res) == 0) break;
+		if (PQntuples(nspgConn->res) == 0)
+			break;
 
 		byte_len_column = PQgetvalue(nspgConn->res, 0, 0);
 		data_column = PQgetvalue(nspgConn->res, 0, 1);
 		sscanf(byte_len_column, "%d", &byte_len);
 		nbytes += byte_len;
 		n = byte_len;
-		for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
+		for (i = 0, j = 0; n > 0; i += 4, j += 3, n -= 3) {
 			decode3(&data_column[i], &buf[j], n);
 		}
-        buf[byte_len] = '\0';
+		buf[byte_len] = '\0';
 		Tcl_AppendResult(interp, buf, NULL);
 		segment++;
-    }
+	}
 
 	PQclear(nspgConn->res);
 	nspgConn->res = NULL;
@@ -929,29 +945,24 @@ blob_get(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id)
  * Lifted from Oracle driver.
  */
 static int
-stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_conn_p)
+stream_actually_write(int fd, Ns_Conn * conn, void *bufp, int length,
+											int to_conn_p)
 {
-  int bytes_written = 0;
+	int bytes_written = 0;
 
-  if (to_conn_p)
-    {
-      if (Ns_WriteConn (conn, bufp, length) == NS_OK) 
-        {
-	  bytes_written = length;
-        } 
-      else 
-        {
-	  bytes_written = 0;
-        }
-    }
-  else
-    {
-      bytes_written = write (fd, bufp, length);
-    }
+	if (to_conn_p) {
+		if (Ns_WriteConn(conn, bufp, length) == NS_OK) {
+			bytes_written = length;
+		} else {
+			bytes_written = 0;
+		}
+	} else {
+		bytes_written = write(fd, bufp, length);
+	}
 
-  return bytes_written;
-  
-} /* stream_actually_write */
+	return bytes_written;
+
+}																/* stream_actually_write */
 
 
 /* ns_pg blob_put blob_id value
@@ -959,16 +970,16 @@ stream_actually_write (int fd, Ns_Conn *conn, void *bufp, int length, int to_con
  */
 
 static int
-blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
-			char* value)
+blob_put(Tcl_Interp * interp, Ns_DbHandle * handle, char *blob_id,
+				 char *value)
 {
-    NsPgConn	*nspgConn = (NsPgConn *) handle->connection;
-	int			i, j, segment, value_len, segment_len;
-	char		out_buf[8001], query[10000];
-	char		*segment_pos, *value_ptr;
+	NsPgConn *nspgConn = (NsPgConn *) handle->connection;
+	int i, j, segment, value_len, segment_len;
+	char out_buf[8001], query[10000];
+	char *segment_pos, *value_ptr;
 
-    value_len = strlen(value);
-    value_ptr = value;
+	value_len = strlen(value);
+	value_ptr = value;
 
 	strcpy(query, "INSERT INTO LOB_DATA VALUES(");
 	strcat(query, blob_id);
@@ -977,39 +988,38 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
 	segment = 1;
 
 	while (value_len > 0) {
-	    segment_len = value_len > 6000 ? 6000 : value_len;
-        value_len -= segment_len;
-		for (i = 0, j = 0; i < segment_len; i += 3, j+=4) {
+		segment_len = value_len > 6000 ? 6000 : value_len;
+		value_len -= segment_len;
+		for (i = 0, j = 0; i < segment_len; i += 3, j += 4) {
 			encode3(&value_ptr[i], &out_buf[j]);
 		}
 		out_buf[j] = '\0';
 		sprintf(segment_pos, "%d, %d, '%s')", segment, segment_len, out_buf);
 
 		if (Ns_PgExec(handle, query) != NS_DML) {
-		  Tcl_DString errString;
-		  Tcl_DStringInit(&errString);
-		  
-		  Tcl_DStringAppend
-		    (&errString, "Error inserting data into BLOB\n", -1);
-		  
-		  if(handle->verbose)
-		    {
-		      append_PQresultStatus(&errString, nspgConn->res);
-		      
-		      Tcl_DStringAppend(&errString, "SQL:  ", -1);
-		      Tcl_DStringAppend(&errString, query, -1);
-		    }
+			Tcl_DString errString;
+			Tcl_DStringInit(&errString);
 
-		  Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
-		  
-		  Tcl_DStringFree(&errString);
-		  
-		  return TCL_ERROR;
+			Tcl_DStringAppend
+					(&errString, "Error inserting data into BLOB\n", -1);
+
+			if (handle->verbose) {
+				append_PQresultStatus(&errString, nspgConn->res);
+
+				Tcl_DStringAppend(&errString, "SQL:  ", -1);
+				Tcl_DStringAppend(&errString, query, -1);
+			}
+
+			Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
+
+			Tcl_DStringFree(&errString);
+
+			return TCL_ERROR;
 		}
-        value_ptr += segment_len;
+		value_ptr += segment_len;
 		segment++;
 	}
-    Ns_Log(Notice, "done");
+	Ns_Log(Notice, "done");
 	return TCL_OK;
 }
 
@@ -1018,58 +1028,56 @@ blob_put(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
  */
 
 static int
-blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
-			char* filename)
+blob_dml_file(Tcl_Interp * interp, Ns_DbHandle * handle, char *blob_id,
+							char *filename)
 {
-    NsPgConn	*nspgConn = (NsPgConn *) handle->connection;
-	int			fd, i, j, segment, readlen;
-	char		in_buf[6000], out_buf[8001], query[10000];
-	char		*segment_pos;
+	NsPgConn *nspgConn = (NsPgConn *) handle->connection;
+	int fd, i, j, segment, readlen;
+	char in_buf[6000], out_buf[8001], query[10000];
+	char *segment_pos;
 
-	fd = open (filename, O_RDONLY);
+	fd = open(filename, O_RDONLY);
 
-	if (fd == -1) 
-	{
-		Ns_Log (Error, " Error opening file %s: %d(%s)",
-				filename, errno, strerror(errno));
-		Tcl_AppendResult (interp, "can't open file ", filename,
-						 " for reading. ", "received error ",
-						 strerror(errno), NULL);
+	if (fd == -1) {
+		Ns_Log(Error, " Error opening file %s: %d(%s)",
+					 filename, errno, strerror(errno));
+		Tcl_AppendResult(interp, "can't open file ", filename,
+										 " for reading. ", "received error ",
+										 strerror(errno), NULL);
 	}
-  
+
 	strcpy(query, "INSERT INTO LOB_DATA VALUES(");
 	strcat(query, blob_id);
 	strcat(query, ",");
 	segment_pos = query + strlen(query);
 	segment = 1;
 
-	readlen = read (fd, in_buf, 6000);
+	readlen = read(fd, in_buf, 6000);
 	while (readlen > 0) {
-		for (i = 0, j = 0; i < readlen; i += 3, j+=4) {
+		for (i = 0, j = 0; i < readlen; i += 3, j += 4) {
 			encode3(&in_buf[i], &out_buf[j]);
 		}
 		out_buf[j] = '\0';
 		sprintf(segment_pos, "%d, %d, '%s')", segment, readlen, out_buf);
 		if (Ns_PgExec(handle, query) != NS_DML) {
-		  Tcl_DString errString;
-		  Tcl_DStringInit(&errString);
-		  
-		  Tcl_DStringAppend
-		    (&errString, "Error inserting data into BLOB\n", -1);
-		  
-		  if(handle->verbose)
-		    {
-		      append_PQresultStatus(&errString, nspgConn->res);
-		      
-		      Tcl_DStringAppend(&errString, "SQL:  ", -1);
-		      Tcl_DStringAppend(&errString, query, -1);
-		    }
+			Tcl_DString errString;
+			Tcl_DStringInit(&errString);
 
-		  Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
-		  
-		  Tcl_DStringFree(&errString);
-		  
-		  return TCL_ERROR;
+			Tcl_DStringAppend
+					(&errString, "Error inserting data into BLOB\n", -1);
+
+			if (handle->verbose) {
+				append_PQresultStatus(&errString, nspgConn->res);
+
+				Tcl_DStringAppend(&errString, "SQL:  ", -1);
+				Tcl_DStringAppend(&errString, query, -1);
+			}
+
+			Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
+
+			Tcl_DStringFree(&errString);
+
+			return TCL_ERROR;
 		}
 		readlen = read(fd, in_buf, 6000);
 		segment++;
@@ -1093,115 +1101,110 @@ blob_dml_file(Tcl_Interp *interp, Ns_DbHandle *handle, char* blob_id,
  */
 
 static int
-blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id, 
-		    int to_conn_p, char* filename)
+blob_send_to_stream(Tcl_Interp * interp, Ns_DbHandle * handle,
+										char *lob_id, int to_conn_p, char *filename)
 {
-  NsPgConn	*nspgConn = (NsPgConn *) handle->connection;
-  int		segment;
-  char		query[100];
-  int		fd;
-  char		*segment_pos;
-  Ns_Conn       *conn;
+	NsPgConn *nspgConn = (NsPgConn *) handle->connection;
+	int segment;
+	char query[100];
+	int fd;
+	char *segment_pos;
+	Ns_Conn *conn;
 
-  if (to_conn_p) 
-    {  
-      conn = Ns_TclGetConn(interp);
-      
-      /* this Shouldn't Happen, but spew an error just in case */
-      if (conn == NULL) 
-        {
-	  Ns_Log (Error, "blob_send_to_stream: No AOLserver conn available");
+	if (to_conn_p) {
+		conn = Ns_TclGetConn(interp);
 
-	  Tcl_AppendResult (interp, "No AOLserver conn available", NULL);
-	  goto bailout;
-        }
-    } else {
-      if (filename == NULL) 
-	{
-	  Tcl_AppendResult (interp, "could not create temporary file to spool "
-			    "BLOB/CLOB result", NULL);
-	  return TCL_ERROR;
+		/* this Shouldn't Happen, but spew an error just in case */
+		if (conn == NULL) {
+			Ns_Log(Error, "blob_send_to_stream: No AOLserver conn available");
+
+			Tcl_AppendResult(interp, "No AOLserver conn available", NULL);
+			goto bailout;
+		}
+	} else {
+		if (filename == NULL) {
+			Tcl_AppendResult(interp, "could not create temporary file to spool "
+											 "BLOB/CLOB result", NULL);
+			return TCL_ERROR;
+		}
+
+
+		fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+
+		if (fd < 0) {
+			Ns_Log(Error, "Can't open %s for writing. error %d(%s)",
+						 filename, errno, strerror(errno));
+			Tcl_AppendResult(interp, "can't open file ", filename,
+											 " for writing. ",
+											 "received error ", strerror(errno), NULL);
+			return TCL_ERROR;
+		}
 	}
 
+	segment = 1;
 
-      fd = open (filename, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+	strcpy(query, "SELECT BYTE_LEN, DATA FROM LOB_DATA WHERE LOB_ID = ");
+	strcat(query, lob_id);
+	strcat(query, " AND SEGMENT = ");
 
-      if (fd < 0) 
-	{
-	  Ns_Log (Error, "Can't open %s for writing. error %d(%s)",
-		  filename, errno, strerror(errno));
-	  Tcl_AppendResult (interp, "can't open file ", filename,
-			    " for writing. ",
-			    "received error ", strerror(errno), NULL);
-	  return TCL_ERROR;
+	segment_pos = query + strlen(query);
+
+	for (;;) {
+		char *data_column;
+		char *byte_len_column;
+		int i, j, n, byte_len;
+		char buf[6000];
+
+		sprintf(segment_pos, "%d", segment);
+		if (Ns_PgExec(handle, query) != NS_ROWS) {
+			Tcl_DString errString;
+			Tcl_DStringInit(&errString);
+
+			Tcl_DStringAppend
+					(&errString, "Error selecting data from BLOB\n", -1);
+
+			if (handle->verbose) {
+				append_PQresultStatus(&errString, nspgConn->res);
+
+				Tcl_DStringAppend(&errString, "SQL:  ", -1);
+				Tcl_DStringAppend(&errString, query, -1);
+			}
+
+			Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
+
+			Tcl_DStringFree(&errString);
+
+			return TCL_ERROR;
+		}
+
+		if (PQntuples(nspgConn->res) == 0)
+			break;
+
+		byte_len_column = PQgetvalue(nspgConn->res, 0, 0);
+		data_column = PQgetvalue(nspgConn->res, 0, 1);
+		sscanf(byte_len_column, "%d", &byte_len);
+		n = byte_len;
+		for (i = 0, j = 0; n > 0; i += 4, j += 3, n -= 3) {
+			decode3(&data_column[i], &buf[j], n);
+		}
+
+		stream_actually_write(fd, conn, buf, byte_len, to_conn_p);
+		segment++;
 	}
-    }
 
-  segment = 1;
-
-  strcpy(query, "SELECT BYTE_LEN, DATA FROM LOB_DATA WHERE LOB_ID = ");
-  strcat(query, lob_id);
-  strcat(query, " AND SEGMENT = ");
-
-  segment_pos = query + strlen(query);
-
-  for (;;) {
-    char	*data_column;
-    char	*byte_len_column;
-    int		i, j, n, byte_len;
-    char	buf[6000];
-
-    sprintf(segment_pos, "%d", segment);
-    if (Ns_PgExec(handle, query) != NS_ROWS) {
-      Tcl_DString errString;
-      Tcl_DStringInit(&errString);
-      
-      Tcl_DStringAppend
-	(&errString, "Error selecting data from BLOB\n", -1);
-      
-      if(handle->verbose)
-	{
-	  append_PQresultStatus(&errString, nspgConn->res);
-	  
-	  Tcl_DStringAppend(&errString, "SQL:  ", -1);
-	  Tcl_DStringAppend(&errString, query, -1);
+bailout:
+	if (!to_conn_p) {
+		close(fd);
 	}
-      
-      Tcl_AppendResult(interp, Tcl_DStringValue(&errString), NULL);
-      
-      Tcl_DStringFree(&errString);
-      
-      return TCL_ERROR;
-    }
 
-    if (PQntuples(nspgConn->res) == 0) break;
+	PQclear(nspgConn->res);
+	nspgConn->res = NULL;
 
-    byte_len_column = PQgetvalue(nspgConn->res, 0, 0);
-    data_column = PQgetvalue(nspgConn->res, 0, 1);
-    sscanf(byte_len_column, "%d", &byte_len);
-    n = byte_len;
-    for (i=0, j=0; n > 0; i += 4, j += 3, n -= 3) {
-      decode3(&data_column[i], &buf[j], n);
-    }
-
-    stream_actually_write (fd, conn, buf, byte_len, to_conn_p);
-    segment++;
-  }
-
- bailout:
-  if (!to_conn_p)
-    {
-      close (fd);
-    }
-
-  PQclear(nspgConn->res);
-  nspgConn->res = NULL;
-
-  return TCL_OK;
+	return TCL_OK;
 }
 
 
-#endif /* FOR_ACS_USE */
+#endif													/* FOR_ACS_USE */
 
 #ifdef FOR_ACS_USE
 
@@ -1221,16 +1224,16 @@ blob_send_to_stream(Tcl_Interp *interp, Ns_DbHandle *handle, char* lob_id,
  */
 
 static int
-BadArgs(Tcl_Interp *interp, char **argv, char *args)
+BadArgs(Tcl_Interp * interp, char **argv, char *args)
 {
-    Tcl_AppendResult(interp, "wrong # args: should be \"",
-        argv[0], " ", argv[1], NULL);
-    if (args != NULL) {
-        Tcl_AppendResult(interp, " ", args, NULL);
-    }
-    Tcl_AppendResult(interp, "\"", NULL);
+	Tcl_AppendResult(interp, "wrong # args: should be \"",
+									 argv[0], " ", argv[1], NULL);
+	if (args != NULL) {
+		Tcl_AppendResult(interp, " ", args, NULL);
+	}
+	Tcl_AppendResult(interp, "\"", NULL);
 
-    return TCL_ERROR;
+	return TCL_ERROR;
 }
 
 
@@ -1250,47 +1253,46 @@ BadArgs(Tcl_Interp *interp, char **argv, char *args)
  */
 
 static int
-DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql)
+DbFail(Tcl_Interp * interp, Ns_DbHandle * handle, char *cmd, char *sql)
 {
-  NsPgConn *nspgConn = handle->connection;
-  char     *pqerror;
+	NsPgConn *nspgConn = handle->connection;
+	char *pqerror;
 
-  Tcl_AppendResult(interp, "Database operation \"", cmd, "\" failed\n", NULL);
-  if (handle->cExceptionCode[0] != '\0') {
-    Tcl_AppendResult(interp, "(exception ", handle->cExceptionCode,
-                     NULL);
-    if (handle->dsExceptionMsg.length > 0) {
-      Tcl_AppendResult(interp, ", \"", handle->dsExceptionMsg.string,
-                       "\"", NULL);
-    }
-    Tcl_AppendResult(interp, ")\n", NULL);
-  }
+	Tcl_AppendResult(interp, "Database operation \"", cmd, "\" failed\n",
+									 NULL);
+	if (handle->cExceptionCode[0] != '\0') {
+		Tcl_AppendResult(interp, "(exception ", handle->cExceptionCode, NULL);
+		if (handle->dsExceptionMsg.length > 0) {
+			Tcl_AppendResult(interp, ", \"", handle->dsExceptionMsg.string,
+											 "\"", NULL);
+		}
+		Tcl_AppendResult(interp, ")\n", NULL);
+	}
 
-  if(handle->verbose)
-    {
-      pqerror = PQerrorMessage(nspgConn->conn);
-      if (pqerror != NULL && pqerror[0] != '\0') {
-	Tcl_AppendResult(interp, "pqerror was: \"", pqerror, "\"\n", NULL);
-      }
+	if (handle->verbose) {
+		pqerror = PQerrorMessage(nspgConn->conn);
+		if (pqerror != NULL && pqerror[0] != '\0') {
+			Tcl_AppendResult(interp, "pqerror was: \"", pqerror, "\"\n", NULL);
+		}
 
-      /*
-       * append the result status
-       */
-  
-      Tcl_DString pqString;
-      Tcl_DStringInit(&pqString);
-      
-      append_PQresultStatus(&pqString, nspgConn->res); 
-      
-      Tcl_AppendResult(interp, Tcl_DStringValue(&pqString), NULL);
-      Tcl_DStringFree(&pqString);
+		/*
+		 * append the result status
+		 */
 
-      Tcl_AppendResult(interp, "SQL: ", sql, "\n", NULL);
-    }
+		Tcl_DString pqString;
+		Tcl_DStringInit(&pqString);
 
-  Ns_Free(sql);
+		append_PQresultStatus(&pqString, nspgConn->res);
 
-  return TCL_ERROR;
+		Tcl_AppendResult(interp, Tcl_DStringValue(&pqString), NULL);
+		Tcl_DStringFree(&pqString);
+
+		Tcl_AppendResult(interp, "SQL: ", sql, "\n", NULL);
+	}
+
+	Ns_Free(sql);
+
+	return TCL_ERROR;
 }
 
 /* 
@@ -1300,48 +1302,48 @@ DbFail(Tcl_Interp *interp, Ns_DbHandle *handle, char *cmd, char* sql)
 static string_list_elt_t *
 string_list_elt_new(char *string)
 {
-  string_list_elt_t *elt = 
-    (string_list_elt_t *) Ns_Malloc(sizeof(string_list_elt_t));
-  elt->string = string;
-  elt->next = 0;
+	string_list_elt_t *elt =
+			(string_list_elt_t *) Ns_Malloc(sizeof (string_list_elt_t));
+	elt->string = string;
+	elt->next = 0;
 
-  return elt;
+	return elt;
 
-} /* string_list_elt_new */
+}																/* string_list_elt_new */
 
 
 
-static int 
-string_list_len (string_list_elt_t *head)
+static int
+string_list_len(string_list_elt_t * head)
 {
-  int i = 0;
+	int i = 0;
 
-  while (head != NULL) {
-    i++;
-    head = head->next;
-  }
+	while (head != NULL) {
+		i++;
+		head = head->next;
+	}
 
-  return i; 
+	return i;
 
-} /* string_list_len */
+}																/* string_list_len */
 
 
 
 /* Free the whole list and the strings in it. */
 
-static void 
-string_list_free_list (string_list_elt_t *head)
+static void
+string_list_free_list(string_list_elt_t * head)
 {
-  string_list_elt_t *elt;
+	string_list_elt_t *elt;
 
-  while (head) {
-    Ns_Free(head->string);
-    elt = head->next;
-    Ns_Free(head);
-    head = elt;
-  }
+	while (head) {
+		Ns_Free(head->string);
+		elt = head->next;
+		Ns_Free(head);
+		head = elt;
+	}
 
-} /* string_list_free_list */
+}																/* string_list_free_list */
 
 
 
@@ -1350,108 +1352,111 @@ string_list_free_list (string_list_elt_t *head)
  */
 
 static void
-parse_bind_variables(char *input, 
-                     string_list_elt_t **bind_variables, 
-                     string_list_elt_t **fragments)
+parse_bind_variables(char *input,
+										 string_list_elt_t ** bind_variables,
+										 string_list_elt_t ** fragments)
 {
-  char *p, lastchar;
-  enum { base, instr, bind } state;
-  char *bindbuf, *bp;
-  char *fragbuf, *fp;
-  string_list_elt_t *elt, *head=0, *tail=0;
-  string_list_elt_t *felt, *fhead=0, *ftail=0;
-  int current_string_length = 0;
-  int first_bind = 0;
+	char *p, lastchar;
+	enum { base, instr, bind } state;
+	char *bindbuf, *bp;
+	char *fragbuf, *fp;
+	string_list_elt_t *elt, *head = 0, *tail = 0;
+	string_list_elt_t *felt, *fhead = 0, *ftail = 0;
+	int current_string_length = 0;
+	int first_bind = 0;
 
-  fragbuf = (char*)Ns_Malloc((strlen(input)+1)*sizeof(char));
-  fp = fragbuf;
-  bindbuf = (char*)Ns_Malloc((strlen(input)+1)*sizeof(char));
-  bp = bindbuf;
-
-  for (p = input, state=base, lastchar='\0'; *p != '\0'; lastchar = *p, p++) {
-
-    switch (state) {
-    case base:
-      if (*p == '\'') {
-	state = instr;
-        current_string_length = 0;
-        *fp++ = *p;
-      } else if ((*p == ':') && (*(p + 1) != ':') && (lastchar != ':')) {
+	fragbuf = (char *) Ns_Malloc((strlen(input) + 1) * sizeof (char));
+	fp = fragbuf;
+	bindbuf = (char *) Ns_Malloc((strlen(input) + 1) * sizeof (char));
 	bp = bindbuf;
-	state = bind;
-        *fp = '\0';
-        felt = string_list_elt_new(Ns_StrDup(fragbuf));
-        if(ftail == 0) {
-          fhead = ftail = felt;
-        } else {
-          ftail->next = felt;
-          ftail = felt;
-        }
-      } else {
-        *fp++ = *p;
-      }
-      break;
 
-    case instr:
-      if (*p == '\'' && (lastchar != '\'' || current_string_length == 0)) {
-	state = base;
-      }
-      current_string_length++;
-      *fp++ = *p;
-      break;
+	for (p = input, state = base, lastchar = '\0'; *p != '\0';
+			 lastchar = *p, p++) {
 
-    case bind:
-      if (*p == '=') {
-        state = base;
-        bp = bindbuf;
-        fp = fragbuf;
-      } else if (!(*p == '_' || *p == '$' || *p == '#' || isalnum((int)*p))) {
-	*bp = '\0';
-	elt = string_list_elt_new(Ns_StrDup(bindbuf));
-	if (tail == 0) {
-	  head = tail = elt;
-	} else {
-	  tail->next = elt;
-	  tail = elt;
+		switch (state) {
+		case base:
+			if (*p == '\'') {
+				state = instr;
+				current_string_length = 0;
+				*fp++ = *p;
+			} else if ((*p == ':') && (*(p + 1) != ':') && (lastchar != ':')) {
+				bp = bindbuf;
+				state = bind;
+				*fp = '\0';
+				felt = string_list_elt_new(Ns_StrDup(fragbuf));
+				if (ftail == 0) {
+					fhead = ftail = felt;
+				} else {
+					ftail->next = felt;
+					ftail = felt;
+				}
+			} else {
+				*fp++ = *p;
+			}
+			break;
+
+		case instr:
+			if (*p == '\'' && (lastchar != '\'' || current_string_length == 0)) {
+				state = base;
+			}
+			current_string_length++;
+			*fp++ = *p;
+			break;
+
+		case bind:
+			if (*p == '=') {
+				state = base;
+				bp = bindbuf;
+				fp = fragbuf;
+			} else
+					if (!(*p == '_' || *p == '$' || *p == '#' || isalnum((int) *p)))
+			{
+				*bp = '\0';
+				elt = string_list_elt_new(Ns_StrDup(bindbuf));
+				if (tail == 0) {
+					head = tail = elt;
+				} else {
+					tail->next = elt;
+					tail = elt;
+				}
+				state = base;
+				fp = fragbuf;
+				p--;
+			} else {
+				*bp++ = *p;
+			}
+			break;
+		}
 	}
-	state = base;
-        fp = fragbuf;
-	p--;
-      } else {
-	*bp++ = *p;
-      }
-      break;
-    }
-  }
 
-  if (state == bind) {
-    *bp = '\0';
-    elt = string_list_elt_new(Ns_StrDup(bindbuf));
-    if (tail == 0) {
-      head = tail = elt;
-    } else {
-      tail->next = elt;
-      tail = elt;
-    }
-  } else {
-    *fp = '\0';
-    felt = string_list_elt_new(Ns_StrDup(fragbuf));
-    if (ftail == 0) {
-      fhead = ftail = felt;
-    } else {
-      ftail->next = felt;
-      ftail = felt;
-    }
-  }
-  
-  Ns_Free(fragbuf);
-  Ns_Free(bindbuf);
-  *bind_variables = head;
-  *fragments      = fhead;  
+	if (state == bind) {
+		*bp = '\0';
+		elt = string_list_elt_new(Ns_StrDup(bindbuf));
+		if (tail == 0) {
+			head = tail = elt;
+		} else {
+			tail->next = elt;
+			tail = elt;
+		}
+	} else {
+		*fp = '\0';
+		felt = string_list_elt_new(Ns_StrDup(fragbuf));
+		if (ftail == 0) {
+			fhead = ftail = felt;
+		} else {
+			ftail->next = felt;
+			ftail = felt;
+		}
+	}
 
-  return;
+	Ns_Free(fragbuf);
+	Ns_Free(bindbuf);
+	*bind_variables = head;
+	*fragments = fhead;
 
-} /* parse_bind_variables */
+	return;
+
+}																/* parse_bind_variables */
 
 
 /*
@@ -1463,207 +1468,208 @@ parse_bind_variables(char *input,
  */
 
 static int
-PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, char **argv) {
+PgBindCmd(ClientData dummy, Tcl_Interp * interp, int argc, char **argv)
+{
 
-  string_list_elt_t *bind_variables;
-  string_list_elt_t *var_p;
-  string_list_elt_t *sql_fragments;
-  string_list_elt_t *frag_p;
-  Ns_DString         ds;
-  Ns_DbHandle       *handle;
-  Ns_Set            *rowPtr;
-  Ns_Set            *set   = NULL; 
-  char              *cmd;
-  char              *sql;
-  char              *value = NULL;
-  char              *p;
-  int               value_frag_len = 0;
+	string_list_elt_t *bind_variables;
+	string_list_elt_t *var_p;
+	string_list_elt_t *sql_fragments;
+	string_list_elt_t *frag_p;
+	Ns_DString ds;
+	Ns_DbHandle *handle;
+	Ns_Set *rowPtr;
+	Ns_Set *set = NULL;
+	char *cmd;
+	char *sql;
+	char *value = NULL;
+	char *p;
+	int value_frag_len = 0;
 
-  if (argc < 4 || (!STREQ("-bind", argv[3]) && (argc != 4)) || 
-       (STREQ("-bind", argv[3]) && (argc != 6))) {
-    return BadArgs(interp, argv, "dbId sql");
-  }
+	if (argc < 4 || (!STREQ("-bind", argv[3]) && (argc != 4)) ||
+			(STREQ("-bind", argv[3]) && (argc != 6))) {
+		return BadArgs(interp, argv, "dbId sql");
+	}
 
-  if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
-    return TCL_ERROR;
-  }
+	if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
+		return TCL_ERROR;
+	}
 
-  Ns_DStringFree(&handle->dsExceptionMsg);
-  handle->cExceptionCode[0] = '\0';
+	Ns_DStringFree(&handle->dsExceptionMsg);
+	handle->cExceptionCode[0] = '\0';
 
-  /*
-   * Make sure this is a PostgreSQL handle before accessing
-   * handle->connection as an NsPgConn.
-   */
+	/*
+	 * Make sure this is a PostgreSQL handle before accessing
+	 * handle->connection as an NsPgConn.
+	 */
 
-  if (Ns_DbDriverName(handle) != pgName) {
-    Tcl_AppendResult(interp, "handle \"", argv[1], "\" is not of type \"",
-                     pgName, "\"", NULL);
-    return TCL_ERROR;
-  }
+	if (Ns_DbDriverName(handle) != pgName) {
+		Tcl_AppendResult(interp, "handle \"", argv[1], "\" is not of type \"",
+										 pgName, "\"", NULL);
+		return TCL_ERROR;
+	}
 
-  cmd = argv[1];
+	cmd = argv[1];
 
-  if (STREQ("-bind", argv[3])) {
-    set = Ns_TclGetSet(interp, argv[4]);
-    if (set == NULL) {
-      Tcl_AppendResult (interp, "invalid set id `", argv[4], "'", NULL);
-      return TCL_ERROR;	      
-    }
-    sql = Ns_StrDup(argv[5]);
-  } else {
-    sql = Ns_StrDup(argv[3]);
-  }
+	if (STREQ("-bind", argv[3])) {
+		set = Ns_TclGetSet(interp, argv[4]);
+		if (set == NULL) {
+			Tcl_AppendResult(interp, "invalid set id `", argv[4], "'", NULL);
+			return TCL_ERROR;
+		}
+		sql = Ns_StrDup(argv[5]);
+	} else {
+		sql = Ns_StrDup(argv[3]);
+	}
 
-  /*
-   * Parse the query string and find the bind variables.  Return
-   * the sql fragments so that the query can be rebuilt with the 
-   * bind variable values interpolated into the original query.
-   */
+	/*
+	 * Parse the query string and find the bind variables.  Return
+	 * the sql fragments so that the query can be rebuilt with the 
+	 * bind variable values interpolated into the original query.
+	 */
 
-  parse_bind_variables(sql, &bind_variables, &sql_fragments);  
+	parse_bind_variables(sql, &bind_variables, &sql_fragments);
 
-  if (string_list_len(bind_variables) > 0) {
+	if (string_list_len(bind_variables) > 0) {
 
-    Ns_DStringInit(&ds);
+		Ns_DStringInit(&ds);
 
-    /*
-     * Rebuild the query and substitute the actual tcl variable values
-     * for the bind variables.
-     */
+		/*
+		 * Rebuild the query and substitute the actual tcl variable values
+		 * for the bind variables.
+		 */
 
-    for (var_p = bind_variables, frag_p = sql_fragments; 
-         var_p != NULL || frag_p != NULL;) {
-    
-      if (frag_p != NULL) {
-        Ns_DStringAppend(&ds, frag_p->string);
-        frag_p = frag_p->next;
-      }
-   
-      if (var_p != NULL) {
-        if (set == NULL) {
-          value = Tcl_GetVar(interp, var_p->string, 0);
-        } else {
-          value = Ns_SetGet(set, var_p->string);
-        }
-        if (value == NULL) {
-          Tcl_AppendResult (interp, "undefined variable `", var_p->string,
-                            "'", NULL);
-          Ns_DStringFree(&ds);
-          string_list_free_list(bind_variables);
-          string_list_free_list(sql_fragments);
-          Ns_Free(sql);
-          return TCL_ERROR;
-        }
+		for (var_p = bind_variables, frag_p = sql_fragments;
+				 var_p != NULL || frag_p != NULL;) {
 
-        if ( strlen(value) == 0 ) {
-            /*
-             * DRB: If the Tcl variable contains the empty string, pass a NULL
-             * as the value.
-             */
-            Ns_DStringAppend(&ds, "NULL");
-        } else {
-            /*
-             * DRB: We really only need to quote strings, but there is one benefit
-             * to quoting numeric values as well.  A value like '35 union select...'
-             * substituted for a legitimate value in a URL to "smuggle" SQL into a
-             * script will cause a string-to-integer conversion error within Postgres.
-             * This conversion is done before optimization of the query, so indices are
-             * still used when appropriate.
-             */
-            Ns_DStringAppend(&ds, "'");       
+			if (frag_p != NULL) {
+				Ns_DStringAppend(&ds, frag_p->string);
+				frag_p = frag_p->next;
+			}
 
-            /*
-             * DRB: Unfortunately, we need to double-quote quotes as well ... and
-             * escape backslashes
-             */ 
-            for (p = value; *p; p++) {
-                if (*p == '\'') {
-                    if (p > value) {
-                        Ns_DStringNAppend(&ds, value, p-value);
-                    }
-                    value = p;
-                    Ns_DStringAppend(&ds, "'");
-                } else if (*p == '\\') {
-                    if (p > value) {
-                        Ns_DStringNAppend(&ds, value, p-value);
-                    }
-                    value = p;
-                    Ns_DStringAppend(&ds, "\\");
-                }
-            }
+			if (var_p != NULL) {
+				if (set == NULL) {
+					value = Tcl_GetVar(interp, var_p->string, 0);
+				} else {
+					value = Ns_SetGet(set, var_p->string);
+				}
+				if (value == NULL) {
+					Tcl_AppendResult(interp, "undefined variable `", var_p->string,
+													 "'", NULL);
+					Ns_DStringFree(&ds);
+					string_list_free_list(bind_variables);
+					string_list_free_list(sql_fragments);
+					Ns_Free(sql);
+					return TCL_ERROR;
+				}
 
-            if (p > value) {
-                Ns_DStringAppend(&ds, value);
-            }
+				if (strlen(value) == 0) {
+					/*
+					 * DRB: If the Tcl variable contains the empty string, pass a NULL
+					 * as the value.
+					 */
+					Ns_DStringAppend(&ds, "NULL");
+				} else {
+					/*
+					 * DRB: We really only need to quote strings, but there is one benefit
+					 * to quoting numeric values as well.  A value like '35 union select...'
+					 * substituted for a legitimate value in a URL to "smuggle" SQL into a
+					 * script will cause a string-to-integer conversion error within Postgres.
+					 * This conversion is done before optimization of the query, so indices are
+					 * still used when appropriate.
+					 */
+					Ns_DStringAppend(&ds, "'");
 
-            Ns_DStringAppend(&ds, "'");       
-        }
-        var_p = var_p->next;
-      }
-    }
-  
-    Ns_Free(sql);
-    sql = Ns_DStringExport(&ds);
-    Ns_DStringFree(&ds);
-  }
+					/*
+					 * DRB: Unfortunately, we need to double-quote quotes as well ... and
+					 * escape backslashes
+					 */
+					for (p = value; *p; p++) {
+						if (*p == '\'') {
+							if (p > value) {
+								Ns_DStringNAppend(&ds, value, p - value);
+							}
+							value = p;
+							Ns_DStringAppend(&ds, "'");
+						} else if (*p == '\\') {
+							if (p > value) {
+								Ns_DStringNAppend(&ds, value, p - value);
+							}
+							value = p;
+							Ns_DStringAppend(&ds, "\\");
+						}
+					}
 
-  string_list_free_list(bind_variables);
-  string_list_free_list(sql_fragments);
+					if (p > value) {
+						Ns_DStringAppend(&ds, value);
+					}
 
-  if (STREQ(cmd, "dml")) {
-    if (Ns_DbDML(handle, sql) != NS_OK) {
-      return DbFail(interp, handle, cmd, sql);
-    }
-  } else if (STREQ(cmd, "1row")) {
-    rowPtr = Ns_Db1Row(handle, sql);
-    if (rowPtr == NULL) {
-      return DbFail(interp, handle, cmd, sql);
-    }
-    Ns_TclEnterSet(interp, rowPtr, 1);
+					Ns_DStringAppend(&ds, "'");
+				}
+				var_p = var_p->next;
+			}
+		}
 
-  } else if (STREQ(cmd, "0or1row")) {
-    int nrows;
+		Ns_Free(sql);
+		sql = Ns_DStringExport(&ds);
+		Ns_DStringFree(&ds);
+	}
 
-    rowPtr = Ns_Db0or1Row(handle, sql, &nrows);
-    if (rowPtr == NULL) {
-      return DbFail(interp, handle, cmd, sql);
-    }
-    if (nrows == 0) {
-      Ns_SetFree(rowPtr);
-    } else {
-      Ns_TclEnterSet(interp, rowPtr, 1);
-    }
+	string_list_free_list(bind_variables);
+	string_list_free_list(sql_fragments);
 
-  } else if (STREQ(cmd, "select")) {
-    rowPtr = Ns_DbSelect(handle, sql);
-    if (rowPtr == NULL) {
-      return DbFail(interp, handle, cmd, sql);
-    }
-    Ns_TclEnterSet(interp, rowPtr, 0);
+	if (STREQ(cmd, "dml")) {
+		if (Ns_DbDML(handle, sql) != NS_OK) {
+			return DbFail(interp, handle, cmd, sql);
+		}
+	} else if (STREQ(cmd, "1row")) {
+		rowPtr = Ns_Db1Row(handle, sql);
+		if (rowPtr == NULL) {
+			return DbFail(interp, handle, cmd, sql);
+		}
+		Ns_TclEnterSet(interp, rowPtr, 1);
 
-  } else if (STREQ(cmd, "exec")) {
-    switch (Ns_DbExec(handle, sql)) {
-    case NS_DML:
-      Tcl_SetResult(interp, "NS_DML", TCL_STATIC);
-      break;
-    case NS_ROWS:
-      Tcl_SetResult(interp, "NS_ROWS", TCL_STATIC);
-      break;
-    default:
-      return DbFail(interp, handle, cmd, sql);
-      break;
-    }
+	} else if (STREQ(cmd, "0or1row")) {
+		int nrows;
 
-  } else {
-    return DbFail(interp, handle, cmd, sql);    
-  } 
-  Ns_Free(sql);
+		rowPtr = Ns_Db0or1Row(handle, sql, &nrows);
+		if (rowPtr == NULL) {
+			return DbFail(interp, handle, cmd, sql);
+		}
+		if (nrows == 0) {
+			Ns_SetFree(rowPtr);
+		} else {
+			Ns_TclEnterSet(interp, rowPtr, 1);
+		}
 
-  return TCL_OK;
+	} else if (STREQ(cmd, "select")) {
+		rowPtr = Ns_DbSelect(handle, sql);
+		if (rowPtr == NULL) {
+			return DbFail(interp, handle, cmd, sql);
+		}
+		Ns_TclEnterSet(interp, rowPtr, 0);
+
+	} else if (STREQ(cmd, "exec")) {
+		switch (Ns_DbExec(handle, sql)) {
+		case NS_DML:
+			Tcl_SetResult(interp, "NS_DML", TCL_STATIC);
+			break;
+		case NS_ROWS:
+			Tcl_SetResult(interp, "NS_ROWS", TCL_STATIC);
+			break;
+		default:
+			return DbFail(interp, handle, cmd, sql);
+			break;
+		}
+
+	} else {
+		return DbFail(interp, handle, cmd, sql);
+	}
+	Ns_Free(sql);
+
+	return TCL_OK;
 }
 
-#endif /* FOR_ACS_USE */
+#endif													/* FOR_ACS_USE */
 
 /*
  * PgCmd - This function implements the "ns_pg" Tcl command installed into
@@ -1671,118 +1677,118 @@ PgBindCmd(ClientData dummy, Tcl_Interp *interp, int argc, char **argv) {
  * specific to the PostgreSQL driver.
  */
 static int
-PgCmd(ClientData dummy, Tcl_Interp *interp, int argc, char **argv) {
+PgCmd(ClientData dummy, Tcl_Interp * interp, int argc, char **argv)
+{
 
-    Ns_DbHandle    *handle;
-    NsPgConn        *nspgConn;
+	Ns_DbHandle *handle;
+	NsPgConn *nspgConn;
 
-    if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
-        return TCL_ERROR;
-    }
+	if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
+		return TCL_ERROR;
+	}
 
- 	nspgConn = (NsPgConn *) handle->connection;
+	nspgConn = (NsPgConn *) handle->connection;
 
-    /*
-     * Make sure this is a PostgreSQL handle before accessing
-     * handle->connection as an NsPgConn.
-     */
-    if (Ns_DbDriverName(handle) != pgName) {
-        Tcl_AppendResult(interp, "handle \"", argv[1], "\" is not of type \"",
-                         pgName, "\"", NULL);
-        return TCL_ERROR;
-    }
+	/*
+	 * Make sure this is a PostgreSQL handle before accessing
+	 * handle->connection as an NsPgConn.
+	 */
+	if (Ns_DbDriverName(handle) != pgName) {
+		Tcl_AppendResult(interp, "handle \"", argv[1], "\" is not of type \"",
+										 pgName, "\"", NULL);
+		return TCL_ERROR;
+	}
 
 /* BLOBing functions only if FOR_ACS_USE */
 #ifdef FOR_ACS_USE
 
-    if (!strcmp(argv[1], "blob_write")) {
-        if (argc != 4) {
-        	Tcl_AppendResult(interp, "wrong # args: should be \"",
-                         	argv[0], " command dbId blobId\"", NULL);
-        	return TCL_ERROR;
+	if (!strcmp(argv[1], "blob_write")) {
+		if (argc != 4) {
+			Tcl_AppendResult(interp, "wrong # args: should be \"",
+											 argv[0], " command dbId blobId\"", NULL);
+			return TCL_ERROR;
 		}
 		return blob_send_to_stream(interp, handle, argv[3], TRUE, NULL);
 	} else if (!strcmp(argv[1], "blob_get")) {
-    	if (argc != 4) {
-        	Tcl_AppendResult(interp, "wrong # args: should be \"",
-                         	argv[0], " command dbId blobId\"", NULL);
-        	return TCL_ERROR;
-    	}
+		if (argc != 4) {
+			Tcl_AppendResult(interp, "wrong # args: should be \"",
+											 argv[0], " command dbId blobId\"", NULL);
+			return TCL_ERROR;
+		}
 		return blob_get(interp, handle, argv[3]);
 	} else if (!strcmp(argv[1], "blob_put")) {
-    	if (argc != 5) {
-        	Tcl_AppendResult(interp, "wrong # args: should be \"",
-                         	argv[0], " command dbId blobId value\"", NULL);
-        	return TCL_ERROR;
-    	}
+		if (argc != 5) {
+			Tcl_AppendResult(interp, "wrong # args: should be \"",
+											 argv[0], " command dbId blobId value\"", NULL);
+			return TCL_ERROR;
+		}
 		if (!nspgConn->in_transaction) {
-        	Tcl_AppendResult(interp,
-							 "blob_put only allowed in transaction", NULL);
-        	return TCL_ERROR;
+			Tcl_AppendResult(interp,
+											 "blob_put only allowed in transaction", NULL);
+			return TCL_ERROR;
 		}
 		return blob_put(interp, handle, argv[3], argv[4]);
 	} else if (!strcmp(argv[1], "blob_dml_file")) {
-    	if (argc != 5) {
-        	Tcl_AppendResult(interp, "wrong # args: should be \"",
-                         	argv[0], " command dbId blobId filename\"", NULL);
-        	return TCL_ERROR;
-    	}
+		if (argc != 5) {
+			Tcl_AppendResult(interp, "wrong # args: should be \"",
+											 argv[0], " command dbId blobId filename\"", NULL);
+			return TCL_ERROR;
+		}
 		if (!nspgConn->in_transaction) {
-        	Tcl_AppendResult(interp,
-							 "blob_dml_file only allowed in transaction", NULL);
-        	return TCL_ERROR;
+			Tcl_AppendResult(interp,
+											 "blob_dml_file only allowed in transaction", NULL);
+			return TCL_ERROR;
 		}
 		return blob_dml_file(interp, handle, argv[3], argv[4]);
-        } else if (!strcmp(argv[1], "blob_select_file")) {
-        if (argc != 5) {
-        	Tcl_AppendResult(interp, "wrong # args: should be \"",
-                         	argv[0], " command dbId blobId filename\"", NULL);          
-        	return TCL_ERROR;
-        }
-                return blob_send_to_stream(interp, handle, argv[3], FALSE, argv[4]);
-    }
+	} else if (!strcmp(argv[1], "blob_select_file")) {
+		if (argc != 5) {
+			Tcl_AppendResult(interp, "wrong # args: should be \"",
+											 argv[0], " command dbId blobId filename\"", NULL);
+			return TCL_ERROR;
+		}
+		return blob_send_to_stream(interp, handle, argv[3], FALSE, argv[4]);
+	}
+#endif													/* FOR_ACS_USE */
 
-#endif /* FOR_ACS_USE */
+	if (argc != 3) {
+		Tcl_AppendResult(interp, "wrong # args: should be \"",
+										 argv[0], " command dbId\"", NULL);
+		return TCL_ERROR;
+	}
 
-    if (argc != 3) {
-        Tcl_AppendResult(interp, "wrong # args: should be \"",
-                         argv[0], " command dbId\"", NULL);
-        return TCL_ERROR;
-    }
-
-    if (!strcmp(argv[1], "db")) {
-        Tcl_SetResult(interp, (char *) PQdb(nspgConn->conn), TCL_STATIC);
-    } else if (!strcmp(argv[1], "host")) {
-        Tcl_SetResult(interp, (char *) PQhost(nspgConn->conn), TCL_STATIC);
-    } else if (!strcmp(argv[1], "options")) {
-        Tcl_SetResult(interp, (char *) PQoptions(nspgConn->conn), TCL_STATIC);
-    } else if (!strcmp(argv[1], "port")) {
-        Tcl_SetResult(interp, (char *) PQport(nspgConn->conn), TCL_STATIC);
-    } else if (!strcmp(argv[1], "number")) {
-        sprintf(interp->result, "%u", nspgConn->cNum);
-    } else if (!strcmp(argv[1], "error")) {
-        Tcl_SetResult(interp, (char *) PQerrorMessage(nspgConn->conn),
-			 TCL_STATIC);
-    } else if (!strcmp(argv[1], "status")) {
-        if (PQstatus(nspgConn->conn) == CONNECTION_OK) {
-            interp->result = "ok";
-        } else {
-            interp->result = "bad";
-        }
-    } else if (!strcmp(argv[1], "ntuples")) {
-	char string[16];
-	sprintf(string, "%d", nspgConn->nTuples);
-	Tcl_SetResult(interp, string, TCL_VOLATILE);
-    } else {
-        Tcl_AppendResult(interp, "unknown command \"", argv[2],
-                         "\": should be db, host, options, port, error, ntuples, ",
+	if (!strcmp(argv[1], "db")) {
+		Tcl_SetResult(interp, (char *) PQdb(nspgConn->conn), TCL_STATIC);
+	} else if (!strcmp(argv[1], "host")) {
+		Tcl_SetResult(interp, (char *) PQhost(nspgConn->conn), TCL_STATIC);
+	} else if (!strcmp(argv[1], "options")) {
+		Tcl_SetResult(interp, (char *) PQoptions(nspgConn->conn), TCL_STATIC);
+	} else if (!strcmp(argv[1], "port")) {
+		Tcl_SetResult(interp, (char *) PQport(nspgConn->conn), TCL_STATIC);
+	} else if (!strcmp(argv[1], "number")) {
+		sprintf(interp->result, "%u", nspgConn->cNum);
+	} else if (!strcmp(argv[1], "error")) {
+		Tcl_SetResult(interp, (char *) PQerrorMessage(nspgConn->conn),
+									TCL_STATIC);
+	} else if (!strcmp(argv[1], "status")) {
+		if (PQstatus(nspgConn->conn) == CONNECTION_OK) {
+			interp->result = "ok";
+		} else {
+			interp->result = "bad";
+		}
+	} else if (!strcmp(argv[1], "ntuples")) {
+		char string[16];
+		sprintf(string, "%d", nspgConn->nTuples);
+		Tcl_SetResult(interp, string, TCL_VOLATILE);
+	} else {
+		Tcl_AppendResult(interp, "unknown command \"", argv[2],
+										 "\": should be db, host, options, port, error, ntuples, ",
 #ifdef FOR_ACS_USE
-                         "blob_write, blob_dml_file, blob_select_file, blob_put, ",
-#endif 
-                         "or status.", NULL);
-        return TCL_ERROR;
-    }
-    return TCL_OK;
+										 "blob_write, blob_dml_file, blob_select_file, blob_put, ",
+#endif
+										 "or status.", NULL);
+		return TCL_ERROR;
+	}
+	return TCL_OK;
 }
 
 
@@ -1790,20 +1796,21 @@ PgCmd(ClientData dummy, Tcl_Interp *interp, int argc, char **argv) {
  * Ns_PgInterpInit - Add the "ns_pg" command to a single Tcl interpreter.
  */
 static int
-Ns_PgInterpInit(Tcl_Interp *interp, void *ignored) {
-    Tcl_CreateCommand(interp, "ns_pg", PgCmd, NULL, NULL);
+Ns_PgInterpInit(Tcl_Interp * interp, void *ignored)
+{
+	Tcl_CreateCommand(interp, "ns_pg", PgCmd, NULL, NULL);
 #ifdef FOR_ACS_USE
-    Tcl_CreateCommand(interp, "ns_pg_bind", PgBindCmd, NULL, NULL);
+	Tcl_CreateCommand(interp, "ns_pg_bind", PgBindCmd, NULL, NULL);
 #endif
 #ifdef NS_AOLSERVER_3_PLUS
 #ifdef FOR_ACS_USE
-    Tcl_CreateCommand (interp, "ns_column", pg_column_command, NULL, NULL);
-    Tcl_CreateCommand (interp, "ns_table", pg_table_command, NULL, NULL);
+	Tcl_CreateCommand(interp, "ns_column", pg_column_command, NULL, NULL);
+	Tcl_CreateCommand(interp, "ns_table", pg_table_command, NULL, NULL);
 
-#endif /* FOR_ACS_USE */
-#endif /* NS_AOLSERVER_3_PLUS */
+#endif													/* FOR_ACS_USE */
+#endif													/* NS_AOLSERVER_3_PLUS */
 
-    return NS_OK;
+	return NS_OK;
 }
 
 /*
@@ -1811,63 +1818,67 @@ Ns_PgInterpInit(Tcl_Interp *interp, void *ignored) {
  * the virtual server which is being intialized.
  */
 static int
-Ns_PgServerInit(char *hServer, char *hModule, char *hDriver) {
+Ns_PgServerInit(char *hServer, char *hModule, char *hDriver)
+{
 
-    return Ns_TclInitInterps(hServer, Ns_PgInterpInit, NULL);
+	return Ns_TclInitInterps(hServer, Ns_PgInterpInit, NULL);
 }
 
 /*
  * Ns_PgBindRow - Retrieve the list of column names of rows.
  *
  */
-static Ns_Set  *
-Ns_PgBindRow(Ns_DbHandle *handle) {
+static Ns_Set *
+Ns_PgBindRow(Ns_DbHandle * handle)
+{
 
-    static char *asfuncname = "Ns_PgBindRow";
-    int           i;
-    NsPgConn      *nsConn;
-    Ns_Set        *row = NULL;
+	static char *asfuncname = "Ns_PgBindRow";
+	int i;
+	NsPgConn *nsConn;
+	Ns_Set *row = NULL;
 
-    if (handle == NULL || handle->connection == NULL) {
-        Ns_Log(Error, "%s: Invalid connection.", asfuncname);
-        goto done;
-    }
+	if (handle == NULL || handle->connection == NULL) {
+		Ns_Log(Error, "%s: Invalid connection.", asfuncname);
+		goto done;
+	}
 
-    if (!handle->fetchingRows) {
-        Ns_Log(Error, "%s(%s):  No rows waiting to bind.", asfuncname, handle->datasource);
-        goto done;
-    }
+	if (!handle->fetchingRows) {
+		Ns_Log(Error, "%s(%s):  No rows waiting to bind.", asfuncname,
+					 handle->datasource);
+		goto done;
+	}
 
-    nsConn = handle->connection;    
-    row = handle->row;
+	nsConn = handle->connection;
+	row = handle->row;
 
-    if (PQresultStatus(nsConn->res) == PGRES_TUPLES_OK) {
-        nsConn->curTuple = 0;
-        nsConn->nCols = PQnfields(nsConn->res);
-        nsConn->nTuples = PQntuples(nsConn->res);
-        row = handle->row;
-        
-        for (i = 0; i < nsConn->nCols; i++) {
-            Ns_SetPut(row, (char *) PQfname(nsConn->res, i), NULL);
-        }
-       
-    }
-    handle->fetchingRows = NS_FALSE;
-    
-  done:
-    return (row);
+	if (PQresultStatus(nsConn->res) == PGRES_TUPLES_OK) {
+		nsConn->curTuple = 0;
+		nsConn->nCols = PQnfields(nsConn->res);
+		nsConn->nTuples = PQntuples(nsConn->res);
+		row = handle->row;
+
+		for (i = 0; i < nsConn->nCols; i++) {
+			Ns_SetPut(row, (char *) PQfname(nsConn->res, i), NULL);
+		}
+
+	}
+	handle->fetchingRows = NS_FALSE;
+
+done:
+	return (row);
 }
 
 static void
-Ns_PgUnQuoteOidString(Ns_DString *sql) {
+Ns_PgUnQuoteOidString(Ns_DString * sql)
+{
 
-    static char *asfuncname = "Ns_PgUnQuoteOidString";
-    char *ptr;
+	static char *asfuncname = "Ns_PgUnQuoteOidString";
+	char *ptr;
 
-    if (sql == NULL) {
-        Ns_Log(Error, "%s: Invalid Ns_DString -> sql.", asfuncname);
-        return;
-    }
+	if (sql == NULL) {
+		Ns_Log(Error, "%s: Invalid Ns_DString -> sql.", asfuncname);
+		return;
+	}
 
 /* Additions by Scott Cannon Jr. (SDL/USU):
  *
@@ -1877,16 +1888,16 @@ Ns_PgUnQuoteOidString(Ns_DString *sql) {
  * The quoting of oid's is currently ambiguous.
  */
 
-    if ((ptr = strstr(sql->string, OID_QUOTED_STRING)) != NULL) {
-        ptr += (strlen(OID_QUOTED_STRING) - 1);
-        *ptr++ = ' ';
-        while(*ptr != '\0' && *ptr != '\'') {
-            ptr++;
-        }
-        if (*ptr == '\'') {
-            *ptr = ' ';
-        }
-    }
+	if ((ptr = strstr(sql->string, OID_QUOTED_STRING)) != NULL) {
+		ptr += (strlen(OID_QUOTED_STRING) - 1);
+		*ptr++ = ' ';
+		while (*ptr != '\0' && *ptr != '\'') {
+			ptr++;
+		}
+		if (*ptr == '\'') {
+			*ptr = ' ';
+		}
+	}
 }
 
 /* Reimplement some things dropped from AOLserver 3 for the ACS */
@@ -1901,407 +1912,341 @@ Ns_PgUnQuoteOidString(Ns_DString *sql) {
 
 
 static int
-pg_get_column_index (Tcl_Interp *interp, Ns_DbTableInfo *tinfo,
-		      char *indexStr, int *index)
+pg_get_column_index(Tcl_Interp * interp, Ns_DbTableInfo * tinfo,
+										char *indexStr, int *index)
 {
-    int result = TCL_ERROR;
+	int result = TCL_ERROR;
 
-    if (Tcl_GetInt (interp, indexStr, index)) 
-      {
-	goto bailout;
-      }
+	if (Tcl_GetInt(interp, indexStr, index)) {
+		goto bailout;
+	}
 
-    if (*index >= tinfo->ncolumns) 
-      {
-	char buffer[80];
-	sprintf (buffer, "%d", tinfo->ncolumns);
+	if (*index >= tinfo->ncolumns) {
+		char buffer[80];
+		sprintf(buffer, "%d", tinfo->ncolumns);
 
-	Tcl_AppendResult (interp, buffer, " is an invalid column "
-			  "index.  ", tinfo->table->name, " only has ",
-			  buffer, " columns", NULL);
-	goto bailout;
-      }
+		Tcl_AppendResult(interp, buffer, " is an invalid column "
+										 "index.  ", tinfo->table->name, " only has ",
+										 buffer, " columns", NULL);
+		goto bailout;
+	}
 
-    result = TCL_OK;
+	result = TCL_OK;
 
-  bailout:
-    return (result);
+bailout:
+	return (result);
 
-} /* pg_get_column_index */
+}																/* pg_get_column_index */
 
 
 
 /* re-implement the ns_column command */
 static int
-pg_column_command (ClientData dummy, Tcl_Interp *interp, 
-		    int argc, char *argv[])
+pg_column_command(ClientData dummy, Tcl_Interp * interp,
+									int argc, char *argv[])
 {
-    int result = TCL_ERROR;
-    Ns_DbHandle	*handle;
-    Ns_DbTableInfo *tinfo = NULL;
-    int colindex = -1;
+	int result = TCL_ERROR;
+	Ns_DbHandle *handle;
+	Ns_DbTableInfo *tinfo = NULL;
+	int colindex = -1;
 
-    if (argc < 4) 
-      {
-	/* NOTE, the tcl gurus suggested Tcl_WrongNumArgs() for this */
+	if (argc < 4) {
+		/* NOTE, the tcl gurus suggested Tcl_WrongNumArgs() for this */
 
-	Tcl_AppendResult (interp, "wrong # args:  should be \"",
-			  argv[0], " command dbId table ?args?\"", NULL);
-	goto bailout;
-      }
+		Tcl_AppendResult(interp, "wrong # args:  should be \"",
+										 argv[0], " command dbId table ?args?\"", NULL);
+		goto bailout;
+	}
 
-    if (Ns_TclDbGetHandle (interp, argv[2], &handle) != TCL_OK) 
-      {
-	goto bailout;
-      }
+	if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
+		goto bailout;
+	}
 
-    /*!!! we should cache this */
-    tinfo =  Ns_PgGetTableInfo(handle, argv[3]);
-    if (tinfo == NULL) 
-      {
-	Tcl_AppendResult (interp, "could not get table info for "
-			  "table ", argv[3], NULL);
-	goto bailout;
-      }
+	/*!!! we should cache this */
+	tinfo = Ns_PgGetTableInfo(handle, argv[3]);
+	if (tinfo == NULL) {
+		Tcl_AppendResult(interp, "could not get table info for "
+										 "table ", argv[3], NULL);
+		goto bailout;
+	}
 
-    if (!strcmp(argv[1], "count")) 
-      {
-	if (argc != 4) 
-	  {
-	    Tcl_AppendResult (interp, "wrong # of args: should be \"",
-			      argv[0], " ", argv[1], " dbId table\"", NULL);
-	    goto bailout;
-	  }
-	sprintf (interp->result, "%d", tinfo->ncolumns);
+	if (!strcmp(argv[1], "count")) {
+		if (argc != 4) {
+			Tcl_AppendResult(interp, "wrong # of args: should be \"",
+											 argv[0], " ", argv[1], " dbId table\"", NULL);
+			goto bailout;
+		}
+		sprintf(interp->result, "%d", tinfo->ncolumns);
 
-      } 
-    else if (!strcmp(argv[1], "exists")) 
-      {
-	if (argc != 5) 
-	  {
-	    Tcl_AppendResult (interp, "wrong # of args: should be \"",
-			      argv[0], " ", argv[1],
-			      " dbId table column\"", NULL);
-	    goto bailout;
-	  }
-	colindex = Ns_DbColumnIndex (tinfo, argv[4]);
-	if (colindex < 0) 
-	  { 
-	    Tcl_SetResult (interp, "0", TCL_STATIC);
-	  }
-	else 
-	  {
-	    Tcl_SetResult (interp, "1", TCL_STATIC);
-	  }
-      } 
-    else if (!strcmp(argv[1], "name")) 
-      {
-	if (argc != 5) 
-	  {
-	    Tcl_AppendResult (interp, "wrong # of args: should be \"",
-			      argv[0], " ", argv[1],
-			      " dbId table column\"", NULL);
-	    goto bailout;
-	  }
-	if (pg_get_column_index (interp, tinfo, argv[4], &colindex) 
-	    != TCL_OK) 
-	  {
-	    goto bailout;
-	  }
-	Tcl_SetResult (interp, tinfo->columns[colindex]->name, TCL_VOLATILE);
-      } 
-    else if (!strcmp(argv[1], "type")) 
-      {
-	if (argc != 5) 
-	  {
-	    Tcl_AppendResult (interp, "wrong # of args: should be \"",
-			      argv[0], " ", argv[1],
-			      " dbId table column\"", NULL);
-	    goto bailout;
-	  }
-	colindex = Ns_DbColumnIndex (tinfo, argv[4]);
-	if (colindex < 0) 
-	  { 
-	    Tcl_SetResult (interp, NULL, TCL_VOLATILE);
-	  }
-	else 
-	  {
-	    Tcl_SetResult (interp, 
-			   Ns_SetGet(tinfo->columns[colindex], "type"),
-			   TCL_VOLATILE);
-	  }
-      } 
-    else if (!strcmp(argv[1], "typebyindex")) 
-      {
-	if (argc != 5) 
-	  {
-	    Tcl_AppendResult (interp, "wrong # of args: should be \"",
-			      argv[0], " ", argv[1],
-			      " dbId table column\"", NULL);
-	    goto bailout;
-	  }
-	if (pg_get_column_index (interp, tinfo, argv[4], &colindex) 
-	    != TCL_OK) 
-	  {
-	    goto bailout;
-	  }
-	if (colindex < 0) 
-	  { 
-	    Tcl_SetResult (interp, NULL, TCL_VOLATILE);
-	  } 
-	else 
-	  {
-	    Tcl_SetResult (interp, 
-			   Ns_SetGet(tinfo->columns[colindex], "type"),
-			   TCL_VOLATILE);
-	  }
+	} else if (!strcmp(argv[1], "exists")) {
+		if (argc != 5) {
+			Tcl_AppendResult(interp, "wrong # of args: should be \"",
+											 argv[0], " ", argv[1],
+											 " dbId table column\"", NULL);
+			goto bailout;
+		}
+		colindex = Ns_DbColumnIndex(tinfo, argv[4]);
+		if (colindex < 0) {
+			Tcl_SetResult(interp, "0", TCL_STATIC);
+		} else {
+			Tcl_SetResult(interp, "1", TCL_STATIC);
+		}
+	} else if (!strcmp(argv[1], "name")) {
+		if (argc != 5) {
+			Tcl_AppendResult(interp, "wrong # of args: should be \"",
+											 argv[0], " ", argv[1],
+											 " dbId table column\"", NULL);
+			goto bailout;
+		}
+		if (pg_get_column_index(interp, tinfo, argv[4], &colindex)
+				!= TCL_OK) {
+			goto bailout;
+		}
+		Tcl_SetResult(interp, tinfo->columns[colindex]->name, TCL_VOLATILE);
+	} else if (!strcmp(argv[1], "type")) {
+		if (argc != 5) {
+			Tcl_AppendResult(interp, "wrong # of args: should be \"",
+											 argv[0], " ", argv[1],
+											 " dbId table column\"", NULL);
+			goto bailout;
+		}
+		colindex = Ns_DbColumnIndex(tinfo, argv[4]);
+		if (colindex < 0) {
+			Tcl_SetResult(interp, NULL, TCL_VOLATILE);
+		} else {
+			Tcl_SetResult(interp,
+										Ns_SetGet(tinfo->columns[colindex], "type"),
+										TCL_VOLATILE);
+		}
+	} else if (!strcmp(argv[1], "typebyindex")) {
+		if (argc != 5) {
+			Tcl_AppendResult(interp, "wrong # of args: should be \"",
+											 argv[0], " ", argv[1],
+											 " dbId table column\"", NULL);
+			goto bailout;
+		}
+		if (pg_get_column_index(interp, tinfo, argv[4], &colindex)
+				!= TCL_OK) {
+			goto bailout;
+		}
+		if (colindex < 0) {
+			Tcl_SetResult(interp, NULL, TCL_VOLATILE);
+		} else {
+			Tcl_SetResult(interp,
+										Ns_SetGet(tinfo->columns[colindex], "type"),
+										TCL_VOLATILE);
+		}
 
-      } 
-    else if (!strcmp(argv[1], "value")) 
-      {
-	/* not used in ACS AFAIK */
-	Tcl_AppendResult (interp, argv[1], " value is not implemented.", 
-			  NULL);
-	goto bailout;
+	} else if (!strcmp(argv[1], "value")) {
+		/* not used in ACS AFAIK */
+		Tcl_AppendResult(interp, argv[1], " value is not implemented.", NULL);
+		goto bailout;
 
-      } 
-    else if (!strcmp(argv[1], "valuebyindex")) 
-      {
-	/* not used in ACS AFAIK */
-	Tcl_AppendResult (interp, argv[1], " valuebyindex is not implemented.", 
-			  NULL);
-	goto bailout;
-      } 
-    else 
-      {
-	Tcl_AppendResult (interp, "unknown command \"", argv[1],
-			  "\": should be count, exists, name, "
-			  "type, typebyindex, value, or "
-			  "valuebyindex", NULL);
-	goto bailout;
-      }
+	} else if (!strcmp(argv[1], "valuebyindex")) {
+		/* not used in ACS AFAIK */
+		Tcl_AppendResult(interp, argv[1], " valuebyindex is not implemented.",
+										 NULL);
+		goto bailout;
+	} else {
+		Tcl_AppendResult(interp, "unknown command \"", argv[1],
+										 "\": should be count, exists, name, "
+										 "type, typebyindex, value, or " "valuebyindex", NULL);
+		goto bailout;
+	}
 
-    result = TCL_OK;
+	result = TCL_OK;
 
-  bailout:
+bailout:
 
-    Ns_DbFreeTableInfo (tinfo);
-    return (result);
+	Ns_DbFreeTableInfo(tinfo);
+	return (result);
 
-} /* pg_column_command */
+}																/* pg_column_command */
 
 
 
 /* re-implement the ns_table command */
 
 static int
-pg_table_command (ClientData dummy, Tcl_Interp *interp, 
-		   int argc, char *argv[])
+pg_table_command(ClientData dummy, Tcl_Interp * interp,
+								 int argc, char *argv[])
 {
-    int result = TCL_ERROR;
-    Ns_DString tables_string;
-    char *tables, *scan;
+	int result = TCL_ERROR;
+	Ns_DString tables_string;
+	char *tables, *scan;
 
-    Ns_DbHandle	*handle;
+	Ns_DbHandle *handle;
 
-    if (argc < 3) 
-      {
-	Tcl_AppendResult (interp, "wrong # args:  should be \"",
-			  argv[0], " command dbId ?args?\"", NULL);
-	goto bailout;
-      }
+	if (argc < 3) {
+		Tcl_AppendResult(interp, "wrong # args:  should be \"",
+										 argv[0], " command dbId ?args?\"", NULL);
+		goto bailout;
+	}
 
-    if (Ns_TclDbGetHandle (interp, argv[2], &handle) != TCL_OK) 
-      {
-	goto bailout;
-      }
+	if (Ns_TclDbGetHandle(interp, argv[2], &handle) != TCL_OK) {
+		goto bailout;
+	}
 
-    if (!strcmp(argv[1], "bestrowid")) 
-      {
-	/* not used in ACS AFAIK */
-	Tcl_AppendResult (interp, argv[1], " bestrowid is not implemented.", 
-			  NULL);
-	goto bailout;
-      }
-    else if (!strcmp(argv[1], "exists")) 
-      {
-	int exists_p = 0;
+	if (!strcmp(argv[1], "bestrowid")) {
+		/* not used in ACS AFAIK */
+		Tcl_AppendResult(interp, argv[1], " bestrowid is not implemented.",
+										 NULL);
+		goto bailout;
+	} else if (!strcmp(argv[1], "exists")) {
+		int exists_p = 0;
 
-	if (argc != 4) 
-	  {
-	    Tcl_AppendResult (interp, "wrong # of args: should be \"",
-			      argv[0], " ", argv[1], "dbId table\"", NULL);
-	    goto bailout;
-	  }
+		if (argc != 4) {
+			Tcl_AppendResult(interp, "wrong # of args: should be \"",
+											 argv[0], " ", argv[1], "dbId table\"", NULL);
+			goto bailout;
+		}
 
-	Ns_DStringInit (&tables_string);
+		Ns_DStringInit(&tables_string);
 
-	scan = Ns_PgTableList (&tables_string, handle, 1);
+		scan = Ns_PgTableList(&tables_string, handle, 1);
 
-	if (scan == NULL) 
-	  {
-	    Ns_DStringFree (&tables_string);
-	    goto bailout;
-	  }
+		if (scan == NULL) {
+			Ns_DStringFree(&tables_string);
+			goto bailout;
+		}
 
-	while (*scan != '\000') 
-	  {
-	    /* added case insensitive comparison.  dwalker@vorteon.com 1/6/02 */
-	    if (!strcasecmp(argv[3], scan)) 
-	      {
-		exists_p = 1;
-		break;
-	      }
-	    scan += strlen(scan) + 1;
-	  }
+		while (*scan != '\000') {
+			/* added case insensitive comparison.  dwalker@vorteon.com 1/6/02 */
+			if (!strcasecmp(argv[3], scan)) {
+				exists_p = 1;
+				break;
+			}
+			scan += strlen(scan) + 1;
+		}
 
-	Ns_DStringFree (&tables_string);
-	
-	if (exists_p) 
-	  {
-	    Tcl_SetResult (interp, "1", TCL_STATIC);
-	  } 
-	else 
-	  {
-	    Tcl_SetResult (interp, "0", TCL_STATIC);
-	  }
+		Ns_DStringFree(&tables_string);
 
-      } 
-    else if (!strncmp(argv[1], "list", 4)) 
-      {
-	int system_tables_p = 0;
+		if (exists_p) {
+			Tcl_SetResult(interp, "1", TCL_STATIC);
+		} else {
+			Tcl_SetResult(interp, "0", TCL_STATIC);
+		}
 
-	if (argc != 3) 
-	  {
-	    Tcl_AppendResult (interp, "wrong # of args: should be \"",
-			      argv[0], " ", argv[1], "dbId\"", NULL);
-	    goto bailout;
-	  }
+	} else if (!strncmp(argv[1], "list", 4)) {
+		int system_tables_p = 0;
 
-	if (!strcmp(argv[1], "listall")) 
-	  {
-	    system_tables_p = 1;
-	  }
+		if (argc != 3) {
+			Tcl_AppendResult(interp, "wrong # of args: should be \"",
+											 argv[0], " ", argv[1], "dbId\"", NULL);
+			goto bailout;
+		}
 
-	Ns_DStringInit (&tables_string);
+		if (!strcmp(argv[1], "listall")) {
+			system_tables_p = 1;
+		}
 
-	tables = Ns_PgTableList (&tables_string, handle, system_tables_p);
+		Ns_DStringInit(&tables_string);
 
-	if (tables == NULL) 
-	  {
-	    Ns_DStringFree (&tables_string);
-	    goto bailout;
-	  }
+		tables = Ns_PgTableList(&tables_string, handle, system_tables_p);
 
-	for (scan = tables; *scan != '\000'; scan += strlen(scan) + 1) 
-	  {
-	    Tcl_AppendElement (interp, scan);
-	  }
-	Ns_DStringFree (&tables_string);
+		if (tables == NULL) {
+			Ns_DStringFree(&tables_string);
+			goto bailout;
+		}
 
-      } 
-    else if (!strcmp(argv[1], "value")) 
-      {
-	/* not used in ACS AFAIK */
-	Tcl_AppendResult (interp, argv[1], " value is not implemented.", 
-			  NULL);
-	goto bailout;
+		for (scan = tables; *scan != '\000'; scan += strlen(scan) + 1) {
+			Tcl_AppendElement(interp, scan);
+		}
+		Ns_DStringFree(&tables_string);
 
-      } 
-    else 
-      {
-	Tcl_AppendResult (interp, "unknown command \"", argv[1],
-			  "\": should be bestrowid, exists, list, "
-			  "listall, or value", NULL);
-	goto bailout;
-      }
+	} else if (!strcmp(argv[1], "value")) {
+		/* not used in ACS AFAIK */
+		Tcl_AppendResult(interp, argv[1], " value is not implemented.", NULL);
+		goto bailout;
 
-    result = TCL_OK;
+	} else {
+		Tcl_AppendResult(interp, "unknown command \"", argv[1],
+										 "\": should be bestrowid, exists, list, "
+										 "listall, or value", NULL);
+		goto bailout;
+	}
 
-  bailout:
-    return (result);
+	result = TCL_OK;
 
-} /* ora_table_command */
+bailout:
+	return (result);
+
+}																/* ora_table_command */
 
 
 
 static Ns_DbTableInfo *
-Ns_DbNewTableInfo (char *table)
+Ns_DbNewTableInfo(char *table)
 {
-    Ns_DbTableInfo *tinfo;
+	Ns_DbTableInfo *tinfo;
 
-    tinfo = Ns_Malloc (sizeof(Ns_DbTableInfo));
+	tinfo = Ns_Malloc(sizeof (Ns_DbTableInfo));
 
-    tinfo->table = Ns_SetCreate (table);
-    tinfo->ncolumns = 0;
-    tinfo->size = 5;
-    tinfo->columns = Ns_Malloc (sizeof(Ns_Set *) * tinfo->size);
+	tinfo->table = Ns_SetCreate(table);
+	tinfo->ncolumns = 0;
+	tinfo->size = 5;
+	tinfo->columns = Ns_Malloc(sizeof (Ns_Set *) * tinfo->size);
 
-    return (tinfo);
+	return (tinfo);
 
-} /* Ns_DbNewTableInfo */
+}																/* Ns_DbNewTableInfo */
 
 
 
 static void
-Ns_DbAddColumnInfo (Ns_DbTableInfo *tinfo, Ns_Set *column_info)
+Ns_DbAddColumnInfo(Ns_DbTableInfo * tinfo, Ns_Set * column_info)
 {
-    tinfo->ncolumns++;
+	tinfo->ncolumns++;
 
-    if (tinfo->ncolumns > tinfo->size) 
-      {
-	tinfo->size *= 2;
-	tinfo->columns = Ns_Realloc (tinfo->columns,
-				     tinfo->size * sizeof(Ns_Set *));
-      }
-    tinfo->columns[tinfo->ncolumns - 1] = column_info;
+	if (tinfo->ncolumns > tinfo->size) {
+		tinfo->size *= 2;
+		tinfo->columns = Ns_Realloc(tinfo->columns,
+																tinfo->size * sizeof (Ns_Set *));
+	}
+	tinfo->columns[tinfo->ncolumns - 1] = column_info;
 
-} /* Ns_DbAddColumnInfo */
+}																/* Ns_DbAddColumnInfo */
 
 
 
 static void
-Ns_DbFreeTableInfo (Ns_DbTableInfo *tinfo)
+Ns_DbFreeTableInfo(Ns_DbTableInfo * tinfo)
 {
-    int i;
+	int i;
 
-    if (tinfo != NULL) 
-      {
-	for (i = 0; i < tinfo->ncolumns; i++) 
-	  {
-	    Ns_SetFree (tinfo->columns[i]);
-	  }
+	if (tinfo != NULL) {
+		for (i = 0; i < tinfo->ncolumns; i++) {
+			Ns_SetFree(tinfo->columns[i]);
+		}
 
-	Ns_SetFree (tinfo->table);
-	Ns_Free (tinfo->columns);
-	Ns_Free (tinfo);
-      }
+		Ns_SetFree(tinfo->table);
+		Ns_Free(tinfo->columns);
+		Ns_Free(tinfo);
+	}
 
-} /* Ns_DbFreeTableInfo */
+}																/* Ns_DbFreeTableInfo */
 
 
 static int
-Ns_DbColumnIndex (Ns_DbTableInfo *tinfo, char *name)
+Ns_DbColumnIndex(Ns_DbTableInfo * tinfo, char *name)
 {
-    int i;
-    int result = -1;
+	int i;
+	int result = -1;
 
-    for (i = 0; i < tinfo->ncolumns; i++) 
-      {
-	char *cname = tinfo->columns[i]->name;
-	if (   (cname == name)
-	    || ((cname == NULL) && (name == NULL))
-	    || (strcmp(cname, name) == 0)) 
-	  {
-	    result = i;
-	    break;
-	  }
-      }
+	for (i = 0; i < tinfo->ncolumns; i++) {
+		char *cname = tinfo->columns[i]->name;
+		if ((cname == name)
+				|| ((cname == NULL) && (name == NULL))
+				|| (strcmp(cname, name) == 0)) {
+			result = i;
+			break;
+		}
+	}
 
-    return (result);
+	return (result);
 
-} /* Ns_DbColumnIndex */
+}																/* Ns_DbColumnIndex */
 
 
-#endif /* FOR_ACS_USE */
-#endif /* NS_AOLSERVER_3_PLUS */
+#endif													/* FOR_ACS_USE */
+#endif													/* NS_AOLSERVER_3_PLUS */
