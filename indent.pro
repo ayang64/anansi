@@ -1,0 +1,1 @@
+-kr -bs -psl -ts2 -i2
