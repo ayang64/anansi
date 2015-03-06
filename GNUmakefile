@@ -117,7 +117,7 @@ install-config: all
 
 install-modules: all
 	@for i in $(dirs); do \
-		(cd $$i && $(MAKE) install) || exit 1; \
+		$(MAKE) -C $$i install || exit 1; \
 	done
 
 install-tcl: all
