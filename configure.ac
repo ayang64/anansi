@@ -298,7 +298,6 @@ if test "$ac_cv_shared_libgcc" = "yes" ; then
   LIBS="-lgcc_s $LIBS"
 fi
 
-
 #
 # Darwin version of getnameinfo will not work correctly
 # if we do not explicitly set sin_len element of the
@@ -311,8 +310,6 @@ AC_CHECK_MEMBERS([struct sockaddr_in.sin_len],,,[
 #include <sys/types.h>
 #include <netinet/in.h>])
 
-
-
 AC_CHECK_LIB([crypt], [crypt],
   [
     AC_DEFINE([HAVE_CRYPT], [],
@@ -323,12 +320,10 @@ AC_CHECK_LIB([crypt], [crypt],
 )
 AC_SUBST([CRYPT_LIBS])
 
-
-
 AC_CONFIG_FILES([
 include/nsversion.h
-include/Makefile.global
-include/Makefile.module
+include/GNUmakefile.global
+include/GNUmakefile.module
 sample-config.tcl
 naviserver.rdf
 version_include.man
